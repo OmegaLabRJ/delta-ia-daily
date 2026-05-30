@@ -159,15 +159,15 @@ PASSO 2 — APRESENTAR TUDO DE UMA VEZ
 Quando apresentar serviços e horários, responda SEMPRE neste formato exato, sem pular linhas dentro do bloco:
 
 __DISPONIBILIDADE__
-SERVICO:[id]|[nome]|[preço]|[horario1],[horario2],[horario3]
-SERVICO:[id]|[nome]|[preço]|[horario1],[horario2]
+SERVICO:[id]|[nome]|[preço]|[data]|[horario1],[horario2],[horario3]
+SERVICO:[id]|[nome]|[preço]|[data]|[horario1],[horario2]
 __FIM__
 
 Exemplo:
 Temos sim! 🎉
 __DISPONIBILIDADE__
-SERVICO:abc123|Acrigel|R$120|09:00,14:00,16:00
-SERVICO:def456|Massagem|R$80|10:00,11:00,15:00
+SERVICO:abc123|Acrigel|R$120|Hoje|09:00,14:00,16:00
+SERVICO:def456|Massagem|R$80|Amanhã|10:00,11:00,15:00
 __FIM__
 Qual você prefere?
 
