@@ -154,7 +154,8 @@ PASSO 1 — INTENÇÃO DE AGENDAR DETECTADA
 Se o cliente demonstrar qualquer intenção de agendar (ex: "tem horário?", "quero marcar",
 "tem vaga hoje?", "o que vocês fazem?"), NÃO faça perguntas.
 Chame IMEDIATAMENTE a ferramenta 'get_week_availability'.
-Ela já retorna todos os serviços com preços e horários disponíveis de uma vez.
+Ela já retorna todos os serviços com preços e horários de hoje e amanhã.
+Se o cliente pedir para uma data além de amanhã, peça gentilmente para ele chamar no WhatsApp: https://wa.me/55${(profile as any)?.whatsapp?.replace(/\D/g, '') || ""}
 
 PASSO 2 — APRESENTAR TUDO DE UMA VEZ
 Com o resultado em mãos, responda em uma mensagem só em formato de texto limpo. Exemplo:
@@ -184,7 +185,7 @@ Só após confirmação, use 'book_appointment'.
 ─────────────────────────────────────────
 REGRAS INEGOCIÁVEIS:
 ─────────────────────────────────────────
-• NUNCA invente horários. Sempre use get_week_availability antes de citar qualquer horário.
+• NUNCA invente horários. Sempre use get_week_availability antes de citar qualquer horário. Se pedirem para além de amanhã, redirecione pro WhatsApp.
 • NUNCA confirme agendamento sem sucesso no book_appointment.
 • NUNCA explique questões técnicas de tempo, duração ou intervalo ao cliente. Isso é problema da profissional, não do cliente.
 • Se o cliente pedir serviço fora da lista → "Não temos esse serviço ainda, mas posso agendar [mais parecido]. Quer?"
@@ -224,7 +225,7 @@ REGRAS INEGOCIÁVEIS:
       functionDeclarations: [
         {
           name: "get_week_availability",
-          description: "Busca horários disponíveis dos próximos 7 dias para todos os serviços. Use sempre que o cliente perguntar sobre qualquer data — hoje, amanhã, dias específicos ou semana que vem. Não requer nenhum parâmetro de data, ela automaticamente traz 7 dias de horários.",
+          description: "Busca horários disponíveis de hoje e amanhã para todos os serviços. Se o cliente quiser agendar para depois de amanhã, responda pedindo para ele chamar no WhatsApp.",
           parameters: {
             type: "object",
             properties: {},
@@ -316,9 +317,9 @@ REGRAS INEGOCIÁVEIS:
           const hoje = new Date();
           // Pega data de hoje como string YYYY-MM-DD
           const dtStart = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}-${String(hoje.getDate()).padStart(2, "0")}`;
-          // Pega data daqui a 7 dias
+          // Pega data daqui a 1 dia (hoje + amanhã = 2 dias)
           const nextWeek = new Date(hoje);
-          nextWeek.setDate(hoje.getDate() + 7);
+          nextWeek.setDate(hoje.getDate() + 1);
           const dtEnd = `${nextWeek.getFullYear()}-${String(nextWeek.getMonth() + 1).padStart(2, "0")}-${String(nextWeek.getDate()).padStart(2, "0")}`;
           
           // Pega hora atual
