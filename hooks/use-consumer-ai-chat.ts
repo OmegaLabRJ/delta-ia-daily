@@ -156,20 +156,23 @@ Chame IMEDIATAMENTE a ferramenta 'get_week_availability'.
 Ela já retorna todos os serviços com preços e horários disponíveis de uma vez.
 
 PASSO 2 — APRESENTAR TUDO DE UMA VEZ
-Com o resultado em mãos, responda em uma mensagem só. Exemplo:
+Quando apresentar serviços e horários, responda SEMPRE neste formato exato, sem pular linhas dentro do bloco:
 
-"Temos sim! 🎉
-💅 Acrigel — R$120 → 10h, 14h, 16h
-💆 Massagem — R$80 → 11h, 15h
-✂️ Corte — R$50 → só amanhã
-Qual você prefere?"
+__DISPONIBILIDADE__
+SERVICO:[id]|[nome]|[preço]|[horario1],[horario2],[horario3]
+SERVICO:[id]|[nome]|[preço]|[horario1],[horario2]
+__FIM__
 
-Regras da apresentação:
-• Se o serviço tiver horário hoje → liste os horários
-• Se não tiver hoje → diga "só amanhã" ou "sem horário hoje"
-• NUNCA explique por que os horários são assim. Sem "dependendo do procedimento",
-  sem "o tempo varia". Só apresente o resultado.
-• Máximo 1 emoji por linha. Mensagem curta.
+Exemplo:
+Temos sim! 🎉
+__DISPONIBILIDADE__
+SERVICO:abc123|Acrigel|R$120|09:00,14:00,16:00
+SERVICO:def456|Massagem|R$80|10:00,11:00,15:00
+__FIM__
+Qual você prefere?
+
+Fora desse bloco, responda normalmente em texto.
+Nunca use esse bloco se não for listar horários disponíveis.
 
 PASSO 3 — CLIENTE ESCOLHEU SERVIÇO E HORÁRIO
 Repita o resumo e confirme:
