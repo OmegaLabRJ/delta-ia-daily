@@ -151,7 +151,7 @@ FLUXO DE AGENDAMENTO — SIGA SEMPRE ESTA ORDEM:
 PASSO 1 — INTENÇÃO DE AGENDAR DETECTADA
 Se o cliente demonstrar qualquer intenção de agendar (ex: "tem horário?", "quero marcar",
 "tem vaga hoje?", "o que vocês fazem?"), NÃO faça perguntas.
-Chame IMEDIATAMENTE a ferramenta 'get_today_availability'.
+Chame IMEDIATAMENTE a ferramenta 'get_week_availability'.
 Ela já retorna todos os serviços com preços e horários disponíveis de uma vez.
 
 PASSO 2 — APRESENTAR TUDO DE UMA VEZ
@@ -182,12 +182,13 @@ Só após confirmação, use 'book_appointment'.
 ─────────────────────────────────────────
 REGRAS INEGOCIÁVEIS:
 ─────────────────────────────────────────
-• NUNCA invente horários. Sempre use get_today_availability antes de citar qualquer horário.
+• NUNCA invente horários. Sempre use get_week_availability antes de citar qualquer horário.
 • NUNCA confirme agendamento sem sucesso no book_appointment.
 • NUNCA explique questões técnicas de tempo, duração ou intervalo ao cliente. Isso é problema da profissional, não do cliente.
 • Se o cliente pedir serviço fora da lista → "Não temos esse serviço ainda, mas posso agendar [mais parecido]. Quer?"
 • Preferências do cliente → salve com save_client_preference sem avisar.
-• NUNCA responda algo como "Só um momento enquanto verifico". Se precisar verificar ou agendar, BASTA CHAMAR A FERRAMENTA NA MESMA RESPOSTA. O cliente não pode ficar esperando.`;
+• NUNCA responda algo como "Só um momento enquanto verifico". Se precisar verificar ou agendar, BASTA CHAMAR A FERRAMENTA NA MESMA RESPOSTA. O cliente não pode ficar esperando.
+• Datas relativas: quando o cliente disser "hoje", "amanhã", "segunda", "semana que vem", "próxima sexta" — calcule sempre a partir da data de hoje que está no seu contexto. NUNCA pergunte "qual segunda?" ou "qual data exata?". Assuma sempre a mais próxima no futuro e confirme na resposta: "Ótimo, na segunda dia 02/06 tenho..."`;
 
       // Welcome message — personalizada para cliente recorrente
       const proFirstName = (profile as any)?.display_name?.split(" ")[0] || proName;
@@ -219,17 +220,11 @@ REGRAS INEGOCIÁVEIS:
     {
       functionDeclarations: [
         {
-          name: "get_today_availability",
-          description: "Busca a disponibilidade de TODOS os serviços da loja para o dia solicitado de uma só vez. Use sempre que o cliente pedir horários ou serviços.",
+          name: "get_week_availability",
+          description: "Busca horários disponíveis dos próximos 7 dias para todos os serviços. Use sempre que o cliente perguntar sobre qualquer data — hoje, amanhã, dias específicos ou semana que vem. Não requer nenhum parâmetro de data, ela automaticamente traz 7 dias de horários.",
           parameters: {
             type: "object",
-            properties: {
-              date: {
-                type: "string",
-                description: "A data desejada no formato YYYY-MM-DD. Ex: 2026-05-20. Use a data de hoje como referência."
-              },
-            },
-            required: ["date"],
+            properties: {},
           },
         },
         {
@@ -312,18 +307,26 @@ REGRAS INEGOCIÁVEIS:
       const call = functionCallPart.functionCall;
       let functionResult: Record<string, any> = {};
 
-      // get_today_availability
-      if (call.name === "get_today_availability") {
-        const { date } = call.args;
+      // get_week_availability
+      if (call.name === "get_week_availability") {
         try {
-          const { data, error } = await supabase.rpc("get_today_availability", {
+          const hoje = new Date();
+          // Pega data de hoje como string YYYY-MM-DD
+          const dtStart = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}-${String(hoje.getDate()).padStart(2, "0")}`;
+          // Pega data daqui a 7 dias
+          const nextWeek = new Date(hoje);
+          nextWeek.setDate(hoje.getDate() + 7);
+          const dtEnd = `${nextWeek.getFullYear()}-${String(nextWeek.getMonth() + 1).padStart(2, "0")}-${String(nextWeek.getDate()).padStart(2, "0")}`;
+
+          const { data, error } = await supabase.rpc("get_week_availability", {
             p_professional_id: professionalId,
-            p_date: date
+            p_date_start: dtStart,
+            p_date_end: dtEnd
           });
           if (error) throw error;
           functionResult = {
             success: true,
-            availability: data,
+            availability_7_days: data,
           };
         } catch (e) {
           console.error("[Delta] RPC error:", e);
