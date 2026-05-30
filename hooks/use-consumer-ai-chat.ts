@@ -156,6 +156,7 @@ Pergunte a data desejada. Se o cliente disser "essa semana" ou "o quanto antes",
 
 PASSO 3 — VERIFICAR DISPONIBILIDADE
 Quando tiver o serviço e a data, USE IMEDIATAMENTE a ferramenta 'check_availability'.
+🚫 REGRA CRÍTICA: NÃO mande mensagem avisando "vou verificar". Chame a ferramenta DIRETAMENTE e APENAS responda o resultado ao cliente.
 → Se tiver horários: liste os disponíveis de forma clara (ex: "Tenho 10h, 14h e 16h disponíveis 📅")
 → Se não tiver: avise com simpatia e pergunte outra data
 
@@ -165,6 +166,7 @@ Quando o cliente escolher um horário, repita o resumo ANTES de agendar:
 
 PASSO 5 — EXECUTAR O AGENDAMENTO
 Só após confirmação, use a ferramenta 'book_appointment'.
+🚫 REGRA CRÍTICA: NÃO mande mensagem dizendo "vou agendar". Chame a ferramenta DIRETAMENTE.
 → Se der certo: comemore brevemente, avise que o agendamento foi salvo na agenda e, OBRIGATORIAMENTE, forneça o link do WhatsApp para o cliente falar com a loja: https://wa.me/55${(profile as any)?.whatsapp?.replace(/\D/g, '') || ""}
 → Se der erro: avise que o horário pode ter sido ocupado e ofereça outro
 
@@ -175,7 +177,8 @@ REGRAS INEGOCIÁVEIS:
 • NUNCA confirme um agendamento sem ter sucesso na ferramenta book_appointment.
 • Se o cliente pedir algo fora dos serviços listados, diga que não oferecem no momento e sugira o mais parecido.
 • Se não souber responder algo sobre a loja, diga: "Não tenho essa informação, mas você pode perguntar direto para ${proName} 😊"
-• Preferências mencionadas pelo cliente (horário favorito, alergias, gostos) → use save_client_preference silenciosamente, sem avisar o cliente.`;
+• Preferências mencionadas pelo cliente (horário favorito, alergias, gostos) → use save_client_preference silenciosamente, sem avisar o cliente.
+• NUNCA responda algo como "Só um momento enquanto verifico". Se precisar verificar ou agendar, BASTA CHAMAR A FERRAMENTA NA MESMA RESPOSTA. O cliente não pode ficar esperando.`;
 
       // Welcome message — personalizada para cliente recorrente
       const proFirstName = (profile as any)?.display_name?.split(" ")[0] || proName;
@@ -293,12 +296,15 @@ REGRAS INEGOCIÁVEIS:
       return "Tive um problema para processar esse pedido 😅 Pode tentar de novo?";
     }
 
-    const part = data?.candidates?.[0]?.content?.parts?.[0];
-    if (!part) return "Hmm, não consegui processar. Pode repetir?";
+    const parts = data?.candidates?.[0]?.content?.parts || [];
+    if (parts.length === 0) return "Hmm, não consegui processar. Pode repetir?";
+
+    const textPart = parts.find((p: any) => p.text);
+    const functionCallPart = parts.find((p: any) => p.functionCall);
 
     // ── Execução de tool ───────────────────────────────────────────────────────
-    if (part.functionCall) {
-      const call = part.functionCall;
+    if (functionCallPart) {
+      const call = functionCallPart.functionCall;
       let functionResult: Record<string, any> = {};
 
       // check_availability
@@ -381,10 +387,15 @@ REGRAS INEGOCIÁVEIS:
       }
 
       // Adiciona tool call + resultado no histórico e chama Gemini novamente
+      const modelParts: any[] = [];
+      if (textPart) modelParts.push(textPart);
+      modelParts.push(functionCallPart);
+
       currentContents.push({
         role: "model",
-        parts: [{ functionCall: call }],
+        parts: modelParts,
       });
+
       currentContents.push({
         role: "function",
         parts: [{
@@ -400,9 +411,9 @@ REGRAS INEGOCIÁVEIS:
     }
 
     // ── Resposta de texto ──────────────────────────────────────────────────────
-    if (part.text) {
-      currentContents.push({ role: "model", parts: [{ text: part.text }] });
-      return part.text;
+    if (textPart) {
+      currentContents.push({ role: "model", parts: [{ text: textPart.text }] });
+      return textPart.text;
     }
 
     return "Desculpe, não entendi. Pode repetir?";
@@ -429,15 +440,22 @@ REGRAS INEGOCIÁVEIS:
         historyRef.current = historyRef.current.slice(-MAX_HISTORY_ENTRIES);
       }
 
+      const thinkingId = `ai_${Date.now()}`;
+      setMessages(prev => [...prev, {
+        id: thinkingId,
+        role: "assistant",
+        content: "...",
+        timestamp: Date.now(),
+      }]);
+
       const data = await callGeminiWithTools(historyRef.current);
       const finalResponse = await processResponse(data, historyRef.current);
 
-      setMessages(prev => [...prev, {
-        id: `ai_${Date.now()}`,
-        role: "assistant",
-        content: finalResponse,
-        timestamp: Date.now(),
-      }]);
+      setMessages(prev => prev.map(m => 
+        m.id === thinkingId 
+          ? { ...m, content: finalResponse }
+          : m
+      ));
 
     } catch (e: any) {
       console.error("[Delta] sendMessage error:", e?.message || e);

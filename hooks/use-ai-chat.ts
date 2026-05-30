@@ -337,12 +337,12 @@ export function useAIChat(userId: string | undefined) {
         // Camada intermediária (Gemini Light 50 tokens)
         if (confidence >= 0.4 && confidence < 0.8 && intent !== "open_question") {
           const classifierData = await callGeminiProxy({
-             system_instruction: { parts: [{ text: "Classifique a intenção: [schedule, price, faq_location, faq_hours, open_question]. Responda apenas com a palavra." }] },
+             system_instruction: { parts: [{ text: "Classifique a intenção: [schedule_faq, schedule_action, price, faq_location, faq_hours, open_question]. Responda apenas com a palavra exata. 'schedule_action' é para criar ou marcar novo agendamento. 'schedule_faq' é para dúvidas sobre como ver a agenda." }] },
              contents: [{ role: "user", parts: [{ text }] }],
              generationConfig: { temperature: 0.1, maxOutputTokens: 10 }
           });
           const predicted = classifierData?.candidates?.[0]?.content?.parts?.[0]?.text?.trim().toLowerCase() || "open_question";
-          if (["schedule", "price", "faq_location", "faq_hours"].includes(predicted)) {
+          if (["schedule_faq", "schedule_action", "price", "faq_location", "faq_hours"].includes(predicted)) {
              intent = predicted;
              confidence = 0.9; // Elevamos a confiança
           } else {
@@ -354,8 +354,10 @@ export function useAIChat(userId: string | undefined) {
           // FLUXO NATIVO (0 tokens)
           let nativeResponse = "";
           
-          if (intent === "schedule") {
+          if (intent === "schedule_faq") {
              nativeResponse = "🗓️ Para gerenciar seus agendamentos, toque na aba 'Agenda' no menu principal!";
+          } else if (intent === "schedule_action") {
+             nativeResponse = "";
           } else if (intent === "price") {
              nativeResponse = "💰 Você pode configurar seus preços e tabela de serviços tocando na aba 'Serviços' na tela inicial.";
           } else if (intent === "faq_location") {

@@ -194,12 +194,13 @@ async function executeCreateAppointment(professionalId: string, args: any) {
     
     const { data: myServices } = await supabase
       .from("marketplace_items" as any)
-      .select("id, name")
+      .select("id, name, item_type")
       .eq("seller_id", professionalId)
-      .eq("is_active", true);
+      .eq("is_active", true)
+      .eq("item_type", "service");
 
     if (!myServices || myServices.length === 0) {
-      return { success: false, error: "Você precisa cadastrar pelo menos um serviço na sua loja antes de agendar." };
+      return { success: false, error: "Você precisa cadastrar pelo menos um serviço (não produto) na sua loja antes de agendar." };
     }
 
     // Achar o serviço mais parecido
@@ -234,7 +235,13 @@ async function executeCreateAppointment(professionalId: string, args: any) {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error("[AI-Tools] Erro ao criar agendamento:", error);
+      if (error.code === "42501") {
+        return { success: false, error: "Permissão negada. Verifique se você está logado corretamente." };
+      }
+      return { success: false, error: `Erro ao agendar: ${error.message}` };
+    }
     
     return {
       success: true,

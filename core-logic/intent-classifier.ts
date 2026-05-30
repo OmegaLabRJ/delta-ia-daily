@@ -20,9 +20,14 @@ interface IntentDefinition {
 // TODO: Podemos criar uma lista separada para a Delta (Consumidor) depois, se necessário.
 const INTENTS: IntentDefinition[] = [
   { 
-    intent: "schedule",
-    patterns: [/quero agendar/i, /marcar\s+hor[aá]rio/i, /tem\s+hor[aá]rio/i, /quero\s+(ver|abrir|gerenciar)\s+(minha\s+)?agenda/i, /onde\s+(fica|vejo)\s+(minha\s+)?agenda/i, /agendamento/i, /bora\s+marcar/i],
-    negations: [/não quero/i, /cancelar/i, /desmarcar/i, /posts/i, /como agendar/i] // "como agendar" é uma dúvida aberta
+    intent: "schedule_faq",
+    patterns: [/quero\s+(ver|abrir|gerenciar)\s+(minha\s+)?agenda/i, /onde\s+(fica|vejo)\s+(minha\s+)?agenda/i, /como\s+(vejo|acesso|abro)\s+(minha\s+)?agenda/i, /tem\s+hor[aá]rio/i],
+    negations: [/agendar/i, /marcar/i, /cliente/i, /pra\s+\w+/i, /nome/i]
+  },
+  {
+    intent: "schedule_action",
+    patterns: [/quero agendar/i, /marcar\s+hor[aá]rio/i, /agendamento/i, /agenda\s+(um|uma|o|a|pra|para)/i, /bora\s+marcar(?!\s+hor)/i],
+    negations: [/não quero/i, /cancelar/i, /desmarcar/i, /posts/i, /como agendar/i, /onde\s+(fica|vejo)/i]
   },
   {
     intent: "price",
