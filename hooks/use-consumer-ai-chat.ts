@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { useSchedule } from "@/hooks/use-schedule";
-import { callGeminiProxy, GeminiContent } from "@/lib/ai";
+import { callGeminiProxy, GeminiContent, resetRateLimit } from "@/lib/ai";
 
 export type ChatMessage = {
   id: string;
@@ -434,6 +434,7 @@ REGRAS INEGOCIÁVEIS:
         }],
       });
 
+      resetRateLimit(); // Evita bloqueio local no envio da resposta da tool
       const nextData = await callGeminiWithTools(currentContents);
       return await processResponse(nextData, currentContents, depth + 1);
     }

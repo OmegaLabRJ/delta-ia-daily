@@ -8,7 +8,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import type { AIChatMessage } from "@/lib/supabase-types";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { callGeminiProxy } from "@/lib/ai";
+import { callGeminiProxy, resetRateLimit } from "@/lib/ai";
 import { AI_TOOLS, executeAITool } from "@/lib/ai-tools";
 import { classifyLocal } from "@/lib/intent-classifier";
 
@@ -430,6 +430,7 @@ export function useAIChat(userId: string | undefined) {
           const aiMsgId = `ai_${Date.now()}`;
           setMessages((prev) => [...prev, { id: aiMsgId, role: "assistant", content: "", timestamp: Date.now() }]);
 
+          resetRateLimit(); // Evita bloqueio local no envio da resposta da tool
           data = await callGeminiProxy({
             system_instruction: { parts: [{ text: fullSystemPrompt }] },
             contents: followUpMessages as any,
