@@ -157,23 +157,13 @@ Chame IMEDIATAMENTE a ferramenta 'get_week_availability'.
 Ela já retorna todos os serviços com preços e horários disponíveis de uma vez.
 
 PASSO 2 — APRESENTAR TUDO DE UMA VEZ
-Quando apresentar serviços e horários, responda SEMPRE neste formato exato, sem pular linhas dentro do bloco:
+Com o resultado em mãos, responda em uma mensagem só em formato de texto limpo. Exemplo:
 
-__DISPONIBILIDADE__
-SERVICO:[id]|[nome]|[preço]|[data]|[horario1],[horario2],[horario3]
-SERVICO:[id]|[nome]|[preço]|[data]|[horario1],[horario2]
-__FIM__
-
-Exemplo:
-Temos sim! 🎉
-__DISPONIBILIDADE__
-SERVICO:abc123|Acrigel|R$120|Hoje|09:00,14:00,16:00
-SERVICO:def456|Massagem|R$80|Amanhã|10:00,11:00,15:00
-__FIM__
-Qual você prefere?
-
-Fora desse bloco, responda normalmente em texto.
-Nunca use esse bloco se não for listar horários disponíveis.
+"Temos sim! 🎉
+💅 Acrigel — R$120 → 10h, 14h, 16h
+💆 Massagem — R$80 → 11h, 15h
+✂️ Corte — R$50 → só amanhã
+Qual você prefere?"
 
 Regras da apresentação:
 • Se o cliente não pediu uma data específica, apresente APENAS a primeira data/dia disponível retornada pela ferramenta. NUNCA liste a semana toda de uma vez para evitar erro.
