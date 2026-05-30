@@ -1,7 +1,8 @@
 CREATE OR REPLACE FUNCTION public.get_week_availability(
   p_professional_id UUID,
   p_date_start DATE,
-  p_date_end DATE
+  p_date_end DATE,
+  p_current_time TIME
 )
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -73,9 +74,12 @@ BEGIN
         WHILE (v_current_minutes + v_duration) <= v_end_minutes LOOP
           v_slot := make_time(v_current_minutes / 60, v_current_minutes % 60, 0);
           
-          -- Se o horário não estiver agendado, adiciona aos livres
-          IF NOT (v_slot = ANY(v_appointments)) THEN
-            v_available_slots := array_append(v_available_slots, to_char(v_slot, 'HH24:MI'));
+          -- Se for HOJE, ignora os horários que já passaram
+          IF NOT (v_current_date = p_date_start AND v_slot <= p_current_time) THEN
+            -- Se o horário não estiver agendado, adiciona aos livres
+            IF NOT (v_slot = ANY(v_appointments)) THEN
+              v_available_slots := array_append(v_available_slots, to_char(v_slot, 'HH24:MI'));
+            END IF;
           END IF;
           
           v_current_minutes := v_current_minutes + v_duration + v_break;

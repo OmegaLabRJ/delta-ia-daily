@@ -143,6 +143,7 @@ ${servicesList || "Nenhum serviço cadastrado ainda."}
 ${clientInfo}
 
 HOJE É: ${new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}
+E AGORA SÃO: ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
 
 ─────────────────────────────────────────
 FLUXO DE AGENDAMENTO — SIGA SEMPRE ESTA ORDEM:
@@ -188,7 +189,8 @@ REGRAS INEGOCIÁVEIS:
 • Se o cliente pedir serviço fora da lista → "Não temos esse serviço ainda, mas posso agendar [mais parecido]. Quer?"
 • Preferências do cliente → salve com save_client_preference sem avisar.
 • NUNCA responda algo como "Só um momento enquanto verifico". Se precisar verificar ou agendar, BASTA CHAMAR A FERRAMENTA NA MESMA RESPOSTA. O cliente não pode ficar esperando.
-• Datas relativas: quando o cliente disser "hoje", "amanhã", "segunda", "semana que vem", "próxima sexta" — calcule sempre a partir da data de hoje que está no seu contexto. NUNCA pergunte "qual segunda?" ou "qual data exata?". Assuma sempre a mais próxima no futuro e confirme na resposta: "Ótimo, na segunda dia 02/06 tenho..."`;
+• Datas relativas: quando o cliente disser "hoje", "amanhã", "segunda", "semana que vem", "próxima sexta" — calcule sempre a partir da data de hoje que está no seu contexto. NUNCA pergunte "qual segunda?" ou "qual data exata?". Assuma sempre a mais próxima no futuro e confirme na resposta: "Ótimo, na segunda dia 02/06 tenho..."
+• A hora atual está no seu contexto. Se um horário já passou hoje, ele não existe. Se todos os horários de hoje já passaram, responda: "Hoje não temos mais horários, mas amanhã tenho [lista]. Quer marcar?"`;
 
       // Welcome message — personalizada para cliente recorrente
       const proFirstName = (profile as any)?.display_name?.split(" ")[0] || proName;
@@ -317,11 +319,15 @@ REGRAS INEGOCIÁVEIS:
           const nextWeek = new Date(hoje);
           nextWeek.setDate(hoje.getDate() + 7);
           const dtEnd = `${nextWeek.getFullYear()}-${String(nextWeek.getMonth() + 1).padStart(2, "0")}-${String(nextWeek.getDate()).padStart(2, "0")}`;
+          
+          // Pega hora atual
+          const currentTime = hoje.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
           const { data, error } = await supabase.rpc("get_week_availability", {
             p_professional_id: professionalId,
             p_date_start: dtStart,
-            p_date_end: dtEnd
+            p_date_end: dtEnd,
+            p_current_time: currentTime
           });
           if (error) throw error;
           functionResult = {
