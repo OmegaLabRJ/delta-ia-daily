@@ -331,9 +331,21 @@ REGRAS INEGOCIÁVEIS:
             p_current_time: currentTime
           });
           if (error) throw error;
+          
+          // COMPRESSÃO DE PAYLOAD: Reduz drastically o JSON para não estourar o limite de tokens do Gemini
+          const compactData = data?.map((day: any) => ({
+            d: day.date,
+            s: day.services.map((s: any) => ({
+              id: s.service_id,
+              n: s.service_name,
+              p: s.price,
+              t: s.available_times.join(',')
+            }))
+          }));
+
           functionResult = {
             success: true,
-            availability_7_days: data,
+            availability: compactData,
           };
         } catch (e) {
           console.error("[Delta] RPC error:", e);
