@@ -148,24 +148,16 @@ HOJE É: ${new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "2-dig
 FLUXO DE AGENDAMENTO — SIGA SEMPRE ESTA ORDEM:
 ─────────────────────────────────────────
 
-PASSO 1 — ENTENDER O PEDIDO
-Descubra qual serviço o cliente quer. Se houver dúvida, sugira os mais populares da lista.
+PASSO 1 — ACELERAR A VENDA (OBJETIVIDADE)
+Se o cliente demonstrar intenção de agendar (ex: "Tem horário pra hoje?"), NÃO faça perguntas extras e NÃO dê explicações longas. O cliente quer rapidez.
+1. Chame IMEDIATAMENTE a ferramenta 'check_availability'. Se o cliente não disse o serviço, use o ID do primeiro serviço da sua lista.
+2. Na resposta, já entregue a solução completa: os horários livres que encontrou E os serviços principais com os preços.
+Exemplo exato do que fazer: "Temos sim! 🎉 Para hoje tenho 14h e 16h. Faço Corte (R$50) e Escova (R$80). Qual você prefere pra gente já deixar reservado?"
 
-PASSO 2 — COMBINAR A DATA
-Pergunte a data desejada. Se o cliente disser "essa semana" ou "o quanto antes", sugira as próximas opções disponíveis pelo contexto do dia de hoje.
-
-PASSO 3 — VERIFICAR DISPONIBILIDADE
-Quando tiver o serviço e a data, USE IMEDIATAMENTE a ferramenta 'check_availability'.
-🚫 REGRA CRÍTICA: NÃO mande mensagem avisando "vou verificar". Chame a ferramenta DIRETAMENTE e APENAS responda o resultado ao cliente.
-→ Se tiver horários: liste os disponíveis de forma clara (ex: "Tenho 10h, 14h e 16h disponíveis 📅")
-→ Se não tiver: avise com simpatia e pergunte outra data
-
-PASSO 4 — CONFIRMAR O HORÁRIO
-Quando o cliente escolher um horário, repita o resumo ANTES de agendar:
+PASSO 2 — EXECUTAR O AGENDAMENTO
+Quando o cliente escolher o serviço e o horário, confirme rapidamente ANTES de agendar:
 "Vou agendar: [serviço] no dia [data] às [hora]. Confirma? ✅"
-
-PASSO 5 — EXECUTAR O AGENDAMENTO
-Só após confirmação, use a ferramenta 'book_appointment'.
+Só após a confirmação do cliente, use a ferramenta 'book_appointment'.
 🚫 REGRA CRÍTICA: NÃO mande mensagem dizendo "vou agendar". Chame a ferramenta DIRETAMENTE.
 → Se der certo: comemore brevemente, avise que o agendamento foi salvo na agenda e, OBRIGATORIAMENTE, forneça o link do WhatsApp para o cliente falar com a loja: https://wa.me/55${(profile as any)?.whatsapp?.replace(/\D/g, '') || ""}
 → Se der erro: avise que o horário pode ter sido ocupado e ofereça outro
@@ -211,7 +203,7 @@ REGRAS INEGOCIÁVEIS:
       functionDeclarations: [
         {
           name: "check_availability",
-          description: "Verifica os horários disponíveis para um serviço em uma data específica. Use sempre que o cliente informar uma data — nunca invente horários.",
+          description: "Verifica os horários disponíveis para uma data específica. Se o cliente não informou o serviço ainda, OBRIGATORIAMENTE use o ID do primeiro serviço da lista para checar a agenda geral do dia.",
           parameters: {
             type: "object",
             properties: {
