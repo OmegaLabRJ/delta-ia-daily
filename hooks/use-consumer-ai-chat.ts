@@ -148,28 +148,45 @@ HOJE É: ${new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "2-dig
 FLUXO DE AGENDAMENTO — SIGA SEMPRE ESTA ORDEM:
 ─────────────────────────────────────────
 
-PASSO 1 — ACELERAR A VENDA (OBJETIVIDADE)
-Se o cliente demonstrar intenção de agendar (ex: "Tem horário pra hoje?"), NÃO faça perguntas extras e NÃO dê explicações longas. O cliente quer rapidez.
-1. Chame IMEDIATAMENTE a ferramenta 'check_availability'. Se o cliente não disse o serviço, use o ID do primeiro serviço da sua lista.
-2. Na resposta, já entregue a solução completa: os horários livres que encontrou E os serviços principais com os preços.
-Exemplo exato do que fazer: "Temos sim! 🎉 Para hoje tenho 14h e 16h. Faço Corte (R$50) e Escova (R$80). Qual você prefere pra gente já deixar reservado?"
+PASSO 1 — INTENÇÃO DE AGENDAR DETECTADA
+Se o cliente demonstrar qualquer intenção de agendar (ex: "tem horário?", "quero marcar",
+"tem vaga hoje?", "o que vocês fazem?"), NÃO faça perguntas.
+Chame IMEDIATAMENTE a ferramenta 'get_today_availability'.
+Ela já retorna todos os serviços com preços e horários disponíveis de uma vez.
 
-PASSO 2 — EXECUTAR O AGENDAMENTO
-Quando o cliente escolher o serviço e o horário, confirme rapidamente ANTES de agendar:
-"Vou agendar: [serviço] no dia [data] às [hora]. Confirma? ✅"
-Só após a confirmação do cliente, use a ferramenta 'book_appointment'.
-🚫 REGRA CRÍTICA: NÃO mande mensagem dizendo "vou agendar". Chame a ferramenta DIRETAMENTE.
-→ Se der certo: comemore brevemente, avise que o agendamento foi salvo na agenda e, OBRIGATORIAMENTE, forneça o link do WhatsApp para o cliente falar com a loja: https://wa.me/55${(profile as any)?.whatsapp?.replace(/\D/g, '') || ""}
-→ Se der erro: avise que o horário pode ter sido ocupado e ofereça outro
+PASSO 2 — APRESENTAR TUDO DE UMA VEZ
+Com o resultado em mãos, responda em uma mensagem só. Exemplo:
+
+"Temos sim! 🎉
+💅 Acrigel — R$120 → 10h, 14h, 16h
+💆 Massagem — R$80 → 11h, 15h
+✂️ Corte — R$50 → só amanhã
+Qual você prefere?"
+
+Regras da apresentação:
+• Se o serviço tiver horário hoje → liste os horários
+• Se não tiver hoje → diga "só amanhã" ou "sem horário hoje"
+• NUNCA explique por que os horários são assim. Sem "dependendo do procedimento",
+  sem "o tempo varia". Só apresente o resultado.
+• Máximo 1 emoji por linha. Mensagem curta.
+
+PASSO 3 — CLIENTE ESCOLHEU SERVIÇO E HORÁRIO
+Repita o resumo e confirme:
+"Ótimo! Vou agendar [serviço] hoje às [hora]. Confirma? ✅"
+
+PASSO 4 — EXECUTAR O AGENDAMENTO
+Só após confirmação, use 'book_appointment'.
+→ Sucesso: "Agendado! 🎉 Qualquer dúvida fala com a gente pelo WhatsApp: https://wa.me/55${(profile as any)?.whatsapp?.replace(/\D/g, '') || ""}"
+→ Erro: "Esse horário acabou de ser ocupado 😅 Quer um desses: [lista restante]?"
 
 ─────────────────────────────────────────
 REGRAS INEGOCIÁVEIS:
 ─────────────────────────────────────────
-• NUNCA invente horários disponíveis. Sempre use check_availability antes de citar horários.
-• NUNCA confirme um agendamento sem ter sucesso na ferramenta book_appointment.
-• Se o cliente pedir algo fora dos serviços listados, diga que não oferecem no momento e sugira o mais parecido.
-• Se não souber responder algo sobre a loja, diga: "Não tenho essa informação, mas você pode perguntar direto para ${proName} 😊"
-• Preferências mencionadas pelo cliente (horário favorito, alergias, gostos) → use save_client_preference silenciosamente, sem avisar o cliente.
+• NUNCA invente horários. Sempre use get_today_availability antes de citar qualquer horário.
+• NUNCA confirme agendamento sem sucesso no book_appointment.
+• NUNCA explique questões técnicas de tempo, duração ou intervalo ao cliente. Isso é problema da profissional, não do cliente.
+• Se o cliente pedir serviço fora da lista → "Não temos esse serviço ainda, mas posso agendar [mais parecido]. Quer?"
+• Preferências do cliente → salve com save_client_preference sem avisar.
 • NUNCA responda algo como "Só um momento enquanto verifico". Se precisar verificar ou agendar, BASTA CHAMAR A FERRAMENTA NA MESMA RESPOSTA. O cliente não pode ficar esperando.`;
 
       // Welcome message — personalizada para cliente recorrente
@@ -202,21 +219,17 @@ REGRAS INEGOCIÁVEIS:
     {
       functionDeclarations: [
         {
-          name: "check_availability",
-          description: "Verifica os horários disponíveis para uma data específica. Se o cliente não informou o serviço ainda, OBRIGATORIAMENTE use o ID do primeiro serviço da lista para checar a agenda geral do dia.",
+          name: "get_today_availability",
+          description: "Busca a disponibilidade de TODOS os serviços da loja para o dia solicitado de uma só vez. Use sempre que o cliente pedir horários ou serviços.",
           parameters: {
             type: "object",
             properties: {
-              service_id: {
-                type: "string",
-                description: "O ID único do serviço conforme listado nos dados da loja. Ex: 'abc123-...'"
-              },
               date: {
                 type: "string",
-                description: "A data desejada no formato YYYY-MM-DD. Ex: 2026-05-20. Use a data de hoje como referência para calcular datas relativas como 'amanhã' ou 'próxima sexta'."
+                description: "A data desejada no formato YYYY-MM-DD. Ex: 2026-05-20. Use a data de hoje como referência."
               },
             },
-            required: ["service_id", "date"],
+            required: ["date"],
           },
         },
         {
@@ -299,22 +312,22 @@ REGRAS INEGOCIÁVEIS:
       const call = functionCallPart.functionCall;
       let functionResult: Record<string, any> = {};
 
-      // check_availability
-      if (call.name === "check_availability") {
-        const { service_id, date } = call.args;
+      // get_today_availability
+      if (call.name === "get_today_availability") {
+        const { date } = call.args;
         try {
-          const dt = new Date(date + "T12:00:00");
-          const { available } = await getAvailableSlots(professionalId, service_id, dt);
+          const { data, error } = await supabase.rpc("get_today_availability", {
+            p_professional_id: professionalId,
+            p_date: date
+          });
+          if (error) throw error;
           functionResult = {
             success: true,
-            available_slots: available,
-            count: available.length,
-            message: available.length === 0
-              ? "Nenhum horário disponível nesta data."
-              : `${available.length} horário(s) disponível(is).`,
+            availability: data,
           };
-        } catch {
-          functionResult = { success: false, error: "Não foi possível verificar a agenda. Tente novamente." };
+        } catch (e) {
+          console.error("[Delta] RPC error:", e);
+          functionResult = { success: false, error: "Não foi possível carregar os horários. Tente novamente." };
         }
       }
 
