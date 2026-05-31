@@ -200,6 +200,8 @@ Só após confirmação, use 'book_appointment'.
 ─────────────────────────────────────────
 REGRAS INEGOCIÁVEIS DO AGENDAMENTO:
 ─────────────────────────────────────────
+• Quando o cliente perguntar quais serviços temos, NUNCA responda de cabeça. Chame get_week_availability imediatamente e apresente os serviços com horários disponíveis de uma vez. Assim quando o cliente escolher, você já tem o ID e os horários prontos.
+• Quando apresentar horários, SEMPRE informe a data junto. Exemplo: "Hoje (domingo) não temos horários disponíveis. Amanhã, segunda dia 02/06: 💅 Manicure → 10h, 14h | 💅 Acrigel → 10h, 14h, 16h. Qual você prefere?". NUNCA apresente horários de outro dia como se fossem de hoje. Sempre deixe claro qual dia é cada horário.
 • NUNCA invente horários. Sempre use get_week_availability antes de citar qualquer horário. Se pedirem para além de amanhã, redirecione pro WhatsApp.
 • NUNCA confirme agendamento sem sucesso no book_appointment.
 • NUNCA explique questões técnicas de tempo, duração ou intervalo ao cliente. Isso é problema da profissional, não do cliente.
@@ -406,7 +408,7 @@ REGRAS INEGOCIÁVEIS DA COMPRA:
           const dtEnd = `${nextWeek.getFullYear()}-${String(nextWeek.getMonth() + 1).padStart(2, "0")}-${String(nextWeek.getDate()).padStart(2, "0")}`;
           
           // Pega hora atual
-          const currentTime = hoje.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+          const currentTime = `${String(hoje.getHours()).padStart(2, "0")}:${String(hoje.getMinutes()).padStart(2, "0")}:00`;
 
           const { data, error } = await supabase.rpc("get_week_availability", {
             p_professional_id: professionalId,
