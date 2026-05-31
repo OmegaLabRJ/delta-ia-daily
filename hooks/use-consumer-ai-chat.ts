@@ -28,6 +28,7 @@ export function useConsumerAIChat(professionalId: string, consumerId?: string) {
   const [messages, setMessages]   = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const contextRef  = useRef<string>("");
+  const storeTypeRef = useRef<"service_only" | "product_only" | "both">("service_only");
   const historyRef  = useRef<GeminiContent[]>([]);
   const loadedRef   = useRef(false);
 
@@ -60,6 +61,14 @@ export function useConsumerAIChat(professionalId: string, consumerId?: string) {
       const servicesList = services.map(i =>
         `  • ID: ${i.id} | ${i.name} | ${i.item_type === "service" ? "Serviço" : "Produto"} | R$${i.price}${i.description ? ` | ${i.description}` : ""}`
       ).join("\n");
+
+      const hasProducts = services.some(i => i.item_type === "product");
+      const hasServices = services.some(i => i.item_type === "service");
+      const storeType = hasProducts && hasServices ? "both" 
+                      : hasProducts ? "product_only" 
+                      : "service_only";
+      storeTypeRef.current = storeType;
+
 
       // Contexto de cliente recorrente (Camada 3)
       let clientInfo = "";
@@ -123,10 +132,17 @@ CLIENTE ATUAL — HISTÓRICO:
       contextRef.current = `VOCÊ É A DELTA — ASSISTENTE VIRTUAL DE ${proName.toUpperCase()}
 
 QUEM VOCÊ É:
-Você é a Delta, assistente virtual desta loja no app Daily. Você atende clientes pelo chat, tira dúvidas sobre serviços e realiza agendamentos. Você representa ${proName} e fala no nome desta loja.
+Você é a Delta, assistente virtual desta loja no app Daily. Você atende clientes pelo chat, tira dúvidas e realiza vendas ou agendamentos. Você representa ${proName} e fala no nome desta loja.
+
+${storeType === 'service_only' ? `Essa loja oferece apenas SERVIÇOS com agendamento. Nunca mencione produtos ou compras físicas. Use apenas o fluxo de agendamento.` : ''}
+${storeType === 'product_only' ? `Essa loja oferece apenas PRODUTOS para compra. Nunca mencione agendamento de horários. Use apenas o fluxo de compra de itens.` : ''}
+${storeType === 'both' ? `Essa loja oferece SERVIÇOS e PRODUTOS. Identifique a intenção do cliente:
+- Se quiser COMPRAR algo físico (roupa, acessório, etc) → fluxo de compra
+- Se quiser AGENDAR algo (procedimento, serviço) → fluxo de agendamento
+- Se quiser AMBOS, responda aos dois fluxos na mesma mensagem de forma natural.` : ''}
 
 TOM DE VOZ:
-• Fale como uma atendente simpática e eficiente — como uma amiga que trabalha no salão
+• Fale como uma atendente simpática e eficiente — como uma amiga que trabalha na loja
 • Linguagem simples e direta. Zero termos técnicos. Frases curtas.
 • Use emojis com moderação (1-2 por mensagem, nunca em excesso)
 • Se o cliente estiver animado, combine com ele. Se estiver apressado, seja objetiva.
@@ -140,19 +156,18 @@ DADOS DA LOJA:
 ${(profile as any)?.avg_rating > 0 ? `• Avaliação: ⭐ ${(profile as any).avg_rating.toFixed(1)}/5` : ""}
 
 SERVIÇOS E PRODUTOS DISPONÍVEIS:
-${servicesList || "Nenhum serviço cadastrado ainda."}
+${servicesList || "Nenhum item cadastrado ainda."}
 ${clientInfo}
 
 HOJE É: ${new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}
 E AGORA SÃO: ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
 
-─────────────────────────────────────────
+${storeType === 'service_only' || storeType === 'both' ? `─────────────────────────────────────────
 FLUXO DE AGENDAMENTO — SIGA SEMPRE ESTA ORDEM:
 ─────────────────────────────────────────
 
 PASSO 1 — INTENÇÃO DE AGENDAR DETECTADA
-Se o cliente demonstrar qualquer intenção de agendar (ex: "tem horário?", "quero marcar",
-"tem vaga hoje?", "o que vocês fazem?"), NÃO faça perguntas.
+Se o cliente demonstrar intenção de agendar (ex: "tem horário?", "quero marcar", "tem vaga hoje?"), NÃO faça perguntas.
 Chame IMEDIATAMENTE a ferramenta 'get_week_availability'.
 Ela já retorna todos os serviços com preços e horários de hoje e amanhã.
 Se o cliente pedir para uma data além de amanhã, peça gentilmente para ele chamar no WhatsApp: https://wa.me/55${(profile as any)?.whatsapp?.replace(/\D/g, '') || ""}
@@ -183,7 +198,7 @@ Só após confirmação, use 'book_appointment'.
 → Erro: "Esse horário acabou de ser ocupado 😅 Quer um desses: [lista restante]?"
 
 ─────────────────────────────────────────
-REGRAS INEGOCIÁVEIS:
+REGRAS INEGOCIÁVEIS DO AGENDAMENTO:
 ─────────────────────────────────────────
 • NUNCA invente horários. Sempre use get_week_availability antes de citar qualquer horário. Se pedirem para além de amanhã, redirecione pro WhatsApp.
 • NUNCA confirme agendamento sem sucesso no book_appointment.
@@ -191,8 +206,32 @@ REGRAS INEGOCIÁVEIS:
 • Se o cliente pedir serviço fora da lista → "Não temos esse serviço ainda, mas posso agendar [mais parecido]. Quer?"
 • Preferências do cliente → salve com save_client_preference sem avisar.
 • NUNCA responda algo como "Só um momento enquanto verifico". Se precisar verificar ou agendar, BASTA CHAMAR A FERRAMENTA NA MESMA RESPOSTA. O cliente não pode ficar esperando.
-• Datas relativas: quando o cliente disser "hoje", "amanhã", "segunda", "semana que vem", "próxima sexta" — calcule sempre a partir da data de hoje que está no seu contexto. NUNCA pergunte "qual segunda?" ou "qual data exata?". Assuma sempre a mais próxima no futuro e confirme na resposta: "Ótimo, na segunda dia 02/06 tenho..."
-• A hora atual está no seu contexto. Se um horário já passou hoje, ele não existe. Se todos os horários de hoje já passaram, avise que hoje não tem mais vagas e liste os horários disponíveis de amanhã.`;
+• Datas relativas: quando o cliente disser "hoje", "amanhã", "segunda" — calcule sempre a partir da data de hoje. NUNCA pergunte "qual data exata?". Assuma sempre a mais próxima no futuro.
+• A hora atual está no seu contexto. Se um horário já passou hoje, ele não existe. Se todos os horários de hoje já passaram, avise que hoje não tem mais vagas e liste os horários de amanhã.` : ''}
+
+${storeType === 'product_only' || storeType === 'both' ? `─────────────────────────────────────────
+FLUXO DE COMPRA DE ITENS — SIGA ESTA ORDEM:
+─────────────────────────────────────────
+
+PASSO 1 — INTENÇÃO DE COMPRA DETECTADA
+Se o cliente quiser comprar um item, chame get_products imediatamente.
+Não pergunte qual item antes de buscar — mostre tudo de uma vez.
+
+PASSO 2 — APRESENTAR OS PRODUTOS
+"Temos esses itens lindos disponíveis:
+👜 Cinto de couro — R$89
+💍 Anel prata — R$120
+👕 Camiseta — R$65
+Qual te interessou?"
+
+PASSO 3 — CLIENTE ESCOLHEU
+"Ótima escolha! Para combinar a entrega e forma de pagamento, fala com a gente pelo WhatsApp 👇
+https://wa.me/55${(profile as any)?.whatsapp?.replace(/\D/g, '') || ""}"
+
+REGRAS INEGOCIÁVEIS DA COMPRA:
+• Nunca invente produtos — use sempre get_products.
+• Nunca prometa prazo de entrega ou frete — isso é combinado pelo WhatsApp.
+• Nunca processe pagamento — direcione sempre pro WhatsApp.` : ''}`;
 
       // Welcome message — personalizada para cliente recorrente
       const proFirstName = (profile as any)?.display_name?.split(" ")[0] || proName;
@@ -220,16 +259,20 @@ REGRAS INEGOCIÁVEIS:
   }
 
   // ── Tools do Gemini ──────────────────────────────────────────────────────────
-  const DELTA_TOOLS = [
-    {
-      functionDeclarations: [
+  // ── Chamada ao Gemini com tools ──────────────────────────────────────────────
+  const callGeminiWithTools = async (contents: GeminiContent[]): Promise<any> => {
+    const storeType = storeTypeRef.current;
+    
+    const toolsConfig = {
+      functionDeclarations: [] as any[]
+    };
+
+    if (storeType === "service_only" || storeType === "both") {
+      toolsConfig.functionDeclarations.push(
         {
           name: "get_week_availability",
           description: "Busca horários disponíveis de hoje e amanhã para todos os serviços. Se o cliente quiser agendar para depois de amanhã, responda pedindo para ele chamar no WhatsApp.",
-          parameters: {
-            type: "object",
-            properties: {},
-          },
+          parameters: { type: "object", properties: {} },
         },
         {
           name: "book_appointment",
@@ -237,50 +280,43 @@ REGRAS INEGOCIÁVEIS:
           parameters: {
             type: "object",
             properties: {
-              service_id: {
-                type: "string",
-                description: "O ID único do serviço."
-              },
-              date: {
-                type: "string",
-                description: "A data no formato YYYY-MM-DD."
-              },
-              time: {
-                type: "string",
-                description: "O horário no formato HH:MM. Deve ser um dos horários retornados por check_availability."
-              },
-              client_name: {
-                type: "string",
-                description: "Nome do cliente para registrar no agendamento. Se não souber, use 'Cliente'."
-              },
+              service_id: { type: "string", description: "O ID único do serviço." },
+              date: { type: "string", description: "A data no formato YYYY-MM-DD." },
+              time: { type: "string", description: "O horário no formato HH:MM. Deve ser um dos horários retornados por check_availability." },
+              client_name: { type: "string", description: "Nome do cliente para registrar no agendamento. Se não souber, use 'Cliente'." },
             },
             required: ["service_id", "date", "time"],
           },
-        },
-        {
-          name: "save_client_preference",
-          description: "Salva silenciosamente uma preferência ou informação relevante do cliente para personalizar atendimentos futuros. Use sem avisar o cliente — apenas registre. Exemplos: horário favorito, alergia a produto, tipo de serviço preferido, forma de pagamento.",
-          parameters: {
-            type: "object",
-            properties: {
-              preference: {
-                type: "string",
-                description: "A preferência em linguagem natural. Ex: 'Prefere horários da tarde', 'Alérgica a acrílico', 'Gosta de nail art com pedrinhas'."
-              },
-            },
-            required: ["preference"],
-          },
-        },
-      ],
-    },
-  ];
+        }
+      );
+    }
 
-  // ── Chamada ao Gemini com tools ──────────────────────────────────────────────
-  const callGeminiWithTools = async (contents: GeminiContent[]): Promise<any> => {
+    if (storeType === "product_only" || storeType === "both") {
+      toolsConfig.functionDeclarations.push(
+        {
+          name: "get_products",
+          description: "Busca os produtos disponíveis na loja. Use quando o cliente demonstrar intenção de comprar um item.",
+          parameters: { type: "object", properties: {} },
+        }
+      );
+    }
+
+    toolsConfig.functionDeclarations.push({
+      name: "save_client_preference",
+      description: "Salva silenciosamente uma preferência ou informação relevante do cliente para personalizar atendimentos futuros. Use sem avisar o cliente — apenas registre. Exemplos: horário favorito, alergia a produto, tipo de serviço preferido, forma de pagamento.",
+      parameters: {
+        type: "object",
+        properties: {
+          preference: { type: "string", description: "A preferência em linguagem natural. Ex: 'Prefere horários da tarde', 'Alérgica a acrílico', 'Gosta de nail art com pedrinhas'." },
+        },
+        required: ["preference"],
+      },
+    });
+
     return await callGeminiProxy({
       system_instruction: { parts: [{ text: contextRef.current }] },
       contents,
-      tools: DELTA_TOOLS,
+      tools: [toolsConfig],
       generationConfig: {
         temperature: 0.3,   // Baixo: Delta precisa ser precisa em datas e horários
         maxOutputTokens: 1024,
@@ -378,6 +414,28 @@ REGRAS INEGOCIÁVEIS:
           } catch {
             functionResult = { success: false, error: "Erro ao salvar no banco de dados." };
           }
+        }
+      }
+
+      // get_products
+      else if (call.name === "get_products") {
+        try {
+          const { data, error } = await supabase
+            .from("marketplace_items" as any)
+            .select("id, name, price, description, image_url")
+            .eq("seller_id", professionalId)
+            .eq("item_type", "product")
+            .eq("is_active", true);
+
+          if (error) throw error;
+
+          functionResult = {
+            success: true,
+            products: data || [],
+          };
+        } catch (e: any) {
+          console.error("[Delta] Erro get_products:", e);
+          functionResult = { success: false, error: e?.message || "Erro ao buscar produtos." };
         }
       }
 
