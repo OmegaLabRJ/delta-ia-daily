@@ -458,7 +458,7 @@ export function useAIChat(userId: string | undefined) {
         // Atualiza a mensagem final (ou actionData) no estado que já estava lá devido ao streaming
         setMessages(prev => {
           const newArr = [...prev];
-          const lastMsg = newArr[newArr.length - 1];
+          const lastMsg = newArr.at(-1);
           if (lastMsg && lastMsg.role === "assistant") {
             lastMsg.content = responseText;
             lastMsg.actionData = actionResult;
