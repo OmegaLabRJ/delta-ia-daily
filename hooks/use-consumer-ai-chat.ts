@@ -52,14 +52,14 @@ export function useConsumerAIChat(professionalId: string, consumerId?: string) {
 
       const { data: items } = await supabase
         .from("marketplace_items" as any)
-        .select("id, name, price, description, item_type, available_days, available_times")
+        .select("id, name, item_type")
         .eq("seller_id", professionalId)
         .eq("is_active", true);
 
       const proName = (profile as any)?.business_name || (profile as any)?.display_name || "Profissional";
       const services = (items || []) as any[];
       const servicesList = services.map(i =>
-        `  • ID: ${i.id} | ${i.name} | ${i.item_type === "service" ? "Serviço" : "Produto"} | R$${i.price}${i.description ? ` | ${i.description}` : ""}`
+        `  • ${i.name} (ID: ${i.id})${i.item_type === "product" ? " — Produto" : ""}`
       ).join("\n");
 
       const hasProducts = services.some(i => i.item_type === "product");
@@ -233,18 +233,49 @@ REGRAS INEGOCIÁVEIS DA COMPRA:
 • Nunca prometa prazo de entrega ou frete — isso é combinado pelo WhatsApp.
 • Nunca processe pagamento — direcione sempre pro WhatsApp.` : ''}`;
 
-      // Welcome message — personalizada para cliente recorrente
-      const proFirstName = (profile as any)?.display_name?.split(" ")[0] || proName;
-      const welcomeText = isRecurring && clientFirstName
-        ? `Oi, ${clientFirstName}! 💕 Que saudade! Da última vez você fez ${lastService} aqui. Quer repetir ou experimentar algo diferente hoje?`
-        : `Olá! Bem-vinda à ${proName}! 🩷 Sou a Delta, assistente virtual aqui. Posso te ajudar a agendar um horário, tirar dúvidas sobre nossos serviços ou o que precisar. Como posso te ajudar?`;
+      // Carregar histórico do banco
+      let chatHistory: any[] = [];
+      if (consumerId) {
+        const { data: history } = await supabase
+          .from("chat_messages" as any)
+          .select("role, content, created_at")
+          .eq("consumer_id", consumerId)
+          .eq("professional_id", professionalId)
+          .order("created_at", { ascending: true })
+          .limit(15);
 
-      setMessages([{
-        id: "welcome",
-        role: "assistant",
-        content: welcomeText,
-        timestamp: Date.now(),
-      }]);
+        if (history && history.length > 0) {
+          chatHistory = history;
+        }
+      }
+
+      historyRef.current = chatHistory.map((m: any) => ({
+        role: m.role === "user" ? "user" : "model",
+        parts: [{ text: m.content }]
+      }));
+
+      if (chatHistory.length > 0) {
+        const loadedMessages = chatHistory.map((m: any, i: number) => ({
+          id: `hist_${Date.now()}_${i}`,
+          role: m.role,
+          content: m.content,
+          timestamp: new Date(m.created_at).getTime(),
+        }));
+        setMessages(loadedMessages);
+      } else {
+        // Welcome message — personalizada para cliente recorrente
+        const proFirstName = (profile as any)?.display_name?.split(" ")[0] || proName;
+        const welcomeText = isRecurring && clientFirstName
+          ? `Oi, ${clientFirstName}! 💕 Que saudade! Da última vez você fez ${lastService} aqui. Quer repetir ou experimentar algo diferente hoje?`
+          : `Olá! Bem-vinda à ${proName}! 🩷 Sou a Delta, assistente virtual aqui. Posso te ajudar a agendar um horário, tirar dúvidas sobre nossos serviços ou o que precisar. Como posso te ajudar?`;
+
+        setMessages([{
+          id: "welcome",
+          role: "assistant",
+          content: welcomeText,
+          timestamp: Date.now(),
+        }]);
+      }
 
     } catch (e) {
       console.error("[Delta] Erro ao construir contexto:", e);
@@ -300,6 +331,22 @@ REGRAS INEGOCIÁVEIS DA COMPRA:
         }
       );
     }
+
+    // Ferramenta de busca de detalhes de item
+    toolsConfig.functionDeclarations.push({
+      name: "get_item_details",
+      description: "Busca preço, descrição e detalhes de um item específico quando o cliente perguntar sobre ele.",
+      parameters: {
+        type: "object",
+        properties: {
+          item_id: {
+            type: "string",
+            description: "O ID do item que o cliente perguntou.",
+          },
+        },
+        required: ["item_id"],
+      },
+    });
 
     toolsConfig.functionDeclarations.push({
       name: "save_client_preference",
@@ -439,6 +486,23 @@ REGRAS INEGOCIÁVEIS DA COMPRA:
         }
       }
 
+      // get_item_details
+      else if (call.name === "get_item_details") {
+        try {
+          const { data, error } = await supabase
+            .from("marketplace_items" as any)
+            .select("name, price, description, item_type, available_days, available_times")
+            .eq("id", call.args.item_id)
+            .single();
+
+          if (error) throw error;
+          functionResult = { success: true, item: data };
+        } catch (e: any) {
+          console.error("[Delta] Erro get_item_details:", e);
+          functionResult = { success: false, error: e?.message || "Erro ao buscar detalhes do item." };
+        }
+      }
+
       // save_client_preference — silencioso, não impacta o fluxo
       else if (call.name === "save_client_preference" && consumerId) {
         try {
@@ -520,9 +584,29 @@ REGRAS INEGOCIÁVEIS DA COMPRA:
     setMessages(prev => [...prev, userMsg]);
 
     try {
+      // Filtra o histórico para remover tool calls e respostas da API antes de enviar,
+      // mantendo apenas as mensagens de texto para não estourar o limite de payload.
+      historyRef.current = historyRef.current.filter(msg => 
+        msg.parts.some((p: any) => p.text) && !msg.parts.some((p: any) => p.functionCall || p.functionResponse)
+      );
+
       historyRef.current.push({ role: "user", parts: [{ text: text.trim() }] });
 
-      // Trim do histórico — entries de functionCall/functionResponse são grandes
+      // Salva a mensagem do usuário no banco de dados
+      if (consumerId) {
+        try {
+          await supabase.from("chat_messages" as any).insert({
+            consumer_id: consumerId,
+            professional_id: professionalId,
+            role: "user",
+            content: text.trim(),
+          });
+        } catch (e) {
+          console.error("[Delta] Erro ao salvar mensagem do user:", e);
+        }
+      }
+
+      // Trim do histórico — mantido apenas para limitar tamanho total no token window
       if (historyRef.current.length > MAX_HISTORY_ENTRIES) {
         historyRef.current = historyRef.current.slice(-MAX_HISTORY_ENTRIES);
       }
@@ -543,6 +627,20 @@ REGRAS INEGOCIÁVEIS DA COMPRA:
           ? { ...m, content: finalResponse }
           : m
       ));
+
+      // Salva a resposta do assistente no banco de dados
+      if (consumerId && finalResponse) {
+        try {
+          await supabase.from("chat_messages" as any).insert({
+            consumer_id: consumerId,
+            professional_id: professionalId,
+            role: "assistant",
+            content: finalResponse,
+          });
+        } catch (e) {
+          console.error("[Delta] Erro ao salvar resposta do assistente:", e);
+        }
+      }
 
     } catch (e: any) {
       console.error("[Delta] sendMessage error:", e?.message || e);
