@@ -1,0 +1,1250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>Daily AI Architecture — Production-Grade Dual-Agent System</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #06060e;
+    --bg-card: rgba(15, 15, 30, 0.85);
+    --bg-card-hover: rgba(20, 20, 45, 0.9);
+    --border: rgba(255,255,255,0.06);
+    --border-accent: rgba(100, 200, 255, 0.15);
+    --cyan: #00d4ff;
+    --cyan-dim: rgba(0, 212, 255, 0.12);
+    --green: #00e88f;
+    --green-dim: rgba(0, 232, 143, 0.12);
+    --purple: #a78bfa;
+    --purple-dim: rgba(167, 139, 250, 0.12);
+    --orange: #ff8a3d;
+    --orange-dim: rgba(255, 138, 61, 0.12);
+    --pink: #ff6b9d;
+    --pink-dim: rgba(255, 107, 157, 0.12);
+    --yellow: #fbbf24;
+    --yellow-dim: rgba(251, 191, 36, 0.12);
+    --text: #e2e8f0;
+    --text-dim: #8892a8;
+    --text-bright: #ffffff;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .diagram {
+    width: 1920px;
+    min-height: 1080px;
+    padding: 28px 32px;
+    position: relative;
+    background: 
+      radial-gradient(ellipse at 20% 20%, rgba(0,212,255,0.04) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 80%, rgba(0,232,143,0.03) 0%, transparent 50%),
+      radial-gradient(ellipse at 50% 50%, rgba(167,139,250,0.02) 0%, transparent 50%),
+      var(--bg);
+  }
+
+  /* ─── HEADER ─── */
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 18px;
+  }
+  .header-left h1 {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    color: var(--text-bright);
+  }
+  .header-left .subtitle {
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-top: 4px;
+    letter-spacing: 0.5px;
+  }
+  .header-tags {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .header-tags span {
+    font-size: 10px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-weight: 500;
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--text-bright);
+  }
+  .logo-icon {
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, var(--cyan), var(--green));
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: 900;
+    color: var(--bg);
+  }
+
+  /* ─── MAIN GRID ─── */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 280px 1fr 320px;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  /* ─── CARDS ─── */
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    backdrop-filter: blur(12px);
+    transition: border-color 0.2s;
+  }
+  .card:hover { border-color: var(--border-accent); }
+
+  .card-title {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .card-title .num {
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 700;
+  }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* ─── LEFT COLUMN: USERS ─── */
+  .user-block {
+    margin-bottom: 14px;
+  }
+  .user-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  .user-label .icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+  }
+  .user-label .name {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-bright);
+  }
+  .user-label .role {
+    font-size: 9px;
+    color: var(--text-dim);
+    font-weight: 500;
+  }
+  .chat-bubble {
+    padding: 8px 11px;
+    border-radius: 10px;
+    font-size: 10px;
+    line-height: 1.4;
+    margin-bottom: 5px;
+    max-width: 90%;
+  }
+  .chat-bubble.user-msg {
+    background: rgba(0, 212, 255, 0.1);
+    border: 1px solid rgba(0, 212, 255, 0.15);
+    margin-left: auto;
+    border-bottom-right-radius: 3px;
+  }
+  .chat-bubble.ai-msg {
+    background: rgba(0, 232, 143, 0.08);
+    border: 1px solid rgba(0, 232, 143, 0.12);
+    border-bottom-left-radius: 3px;
+  }
+  .chat-time {
+    font-size: 8px;
+    color: var(--text-dim);
+    text-align: right;
+    margin-top: 2px;
+  }
+  .user-desc {
+    font-size: 9px;
+    color: var(--text-dim);
+    line-height: 1.4;
+    margin-top: 4px;
+  }
+
+  .arrow-label {
+    text-align: center;
+    font-size: 9px;
+    color: var(--text-dim);
+    padding: 4px 0;
+    position: relative;
+  }
+  .arrow-label::before {
+    content: '→';
+    font-size: 14px;
+    color: var(--cyan);
+    display: block;
+  }
+
+  /* ─── CENTER COLUMN ─── */
+  .center-col {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .classifier-card {
+    border-color: rgba(0, 212, 255, 0.25);
+    background: linear-gradient(135deg, rgba(0,212,255,0.06), rgba(0,212,255,0.02));
+    position: relative;
+  }
+  .classifier-card::before {
+    content: '⚡ KEY TRACK 2 DIFFERENTIATOR';
+    position: absolute;
+    top: -10px;
+    right: 14px;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: var(--cyan);
+    background: var(--bg);
+    padding: 2px 8px;
+    border-radius: 4px;
+    border: 1px solid rgba(0,212,255,0.3);
+  }
+
+  .layer-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    margin-bottom: 4px;
+    font-size: 10px;
+  }
+  .layer-row .layer-num {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 800;
+    flex-shrink: 0;
+  }
+  .layer-row .layer-name {
+    font-weight: 600;
+    color: var(--text-bright);
+    min-width: 130px;
+  }
+  .layer-row .layer-detail {
+    color: var(--text-dim);
+    font-size: 9px;
+  }
+  .layer-row .layer-cost {
+    margin-left: auto;
+    font-size: 9px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+
+  .layer1 { background: rgba(0, 232, 143, 0.06); }
+  .layer1 .layer-num { background: var(--green); color: var(--bg); }
+  .layer1 .layer-cost { background: var(--green-dim); color: var(--green); }
+
+  .layer2 { background: rgba(251, 191, 36, 0.06); }
+  .layer2 .layer-num { background: var(--yellow); color: var(--bg); }
+  .layer2 .layer-cost { background: var(--yellow-dim); color: var(--yellow); }
+
+  .layer3 { background: rgba(167, 139, 250, 0.06); }
+  .layer3 .layer-num { background: var(--purple); color: var(--bg); }
+  .layer3 .layer-cost { background: var(--purple-dim); color: var(--purple); }
+
+  .feedback-loop {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 8px;
+    border-radius: 6px;
+    background: rgba(255, 138, 61, 0.06);
+    border: 1px dashed rgba(255, 138, 61, 0.2);
+    font-size: 9px;
+    color: var(--orange);
+    margin-top: 4px;
+  }
+
+  /* Context + Gemini row */
+  .engine-row {
+    display: grid;
+    grid-template-columns: 1fr 1.3fr;
+    gap: 12px;
+  }
+
+  .context-items {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .ctx-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 9.5px;
+    color: var(--text);
+    padding: 2px 0;
+  }
+  .ctx-item .dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .gemini-box {
+    text-align: center;
+    padding: 16px;
+    background: linear-gradient(135deg, rgba(66,133,244,0.08), rgba(15,157,88,0.08));
+    border-color: rgba(66,133,244,0.2);
+  }
+  .gemini-box .gemini-logo {
+    font-size: 28px;
+    font-weight: 800;
+    background: linear-gradient(135deg, #4285f4, #0f9d58, #f4b400, #db4437);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 4px;
+  }
+  .gemini-box .model-name {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+  .gemini-caps {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+  }
+  .gem-cap {
+    font-size: 9px;
+    padding: 4px 6px;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.03);
+    color: var(--text-dim);
+    text-align: center;
+  }
+
+  /* Tools grid */
+  .tools-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+  }
+  .tool-item {
+    padding: 8px 6px;
+    border-radius: 8px;
+    text-align: center;
+    border: 1px solid var(--border);
+    transition: all 0.15s;
+  }
+  .tool-item:hover { border-color: rgba(255,255,255,0.12); }
+  .tool-item .tool-icon { font-size: 16px; margin-bottom: 3px; }
+  .tool-item .tool-name {
+    font-size: 8.5px;
+    font-weight: 600;
+    color: var(--text-bright);
+    word-break: break-all;
+    margin-bottom: 2px;
+  }
+  .tool-item .tool-desc {
+    font-size: 7.5px;
+    color: var(--text-dim);
+    line-height: 1.3;
+  }
+  .tool-b2b { background: rgba(167, 139, 250, 0.06); }
+  .tool-b2c { background: rgba(0, 212, 255, 0.06); }
+  .tool-shared { background: rgba(0, 232, 143, 0.06); }
+
+  /* Tier routing */
+  .tier-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .tier-box {
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+  .tier-box h4 {
+    font-size: 10px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .tier-box ul {
+    list-style: none;
+    font-size: 9px;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+  .tier-box ul li::before {
+    content: '•';
+    margin-right: 4px;
+  }
+  .tier-free {
+    background: rgba(0, 232, 143, 0.04);
+    border-color: rgba(0, 232, 143, 0.15);
+  }
+  .tier-free h4 { color: var(--green); }
+  .tier-premium {
+    background: rgba(251, 191, 36, 0.04);
+    border-color: rgba(251, 191, 36, 0.15);
+  }
+  .tier-premium h4 { color: var(--yellow); }
+  .tier-tag {
+    display: inline-block;
+    font-size: 7.5px;
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: rgba(255,138,61,0.15);
+    color: var(--orange);
+    font-weight: 600;
+    margin-left: 4px;
+  }
+
+  /* ─── RIGHT COLUMN: DATA ─── */
+  .data-col {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .data-card {
+    padding: 12px;
+  }
+  .data-card h4 {
+    font-size: 10px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .data-card ul {
+    list-style: none;
+    font-size: 9px;
+    color: var(--text-dim);
+    line-height: 1.5;
+  }
+  .data-card ul li {
+    padding: 1px 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 4px;
+  }
+  .data-card ul li::before {
+    content: '›';
+    color: var(--text-dim);
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .data-card .code-name {
+    font-family: 'SF Mono', 'Cascadia Code', monospace;
+    font-size: 8.5px;
+    color: var(--cyan);
+    background: rgba(0,212,255,0.06);
+    padding: 0 3px;
+    border-radius: 2px;
+  }
+
+  /* ─── BOTTOM FLOW ─── */
+  .flow-section {
+    margin-top: 4px;
+  }
+  .flow-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 10px;
+  }
+  .flow-steps {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+  .flow-step {
+    flex: 1;
+    text-align: center;
+    padding: 8px 4px;
+    border-radius: 8px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    position: relative;
+  }
+  .flow-step .step-num {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 800;
+    margin: 0 auto 4px;
+  }
+  .flow-step .step-icon { font-size: 14px; margin-bottom: 2px; }
+  .flow-step .step-text {
+    font-size: 8px;
+    color: var(--text-dim);
+    line-height: 1.3;
+  }
+  .flow-step .step-label {
+    font-size: 8.5px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 2px;
+  }
+  .flow-arrow {
+    font-size: 14px;
+    color: rgba(255,255,255,0.15);
+    flex-shrink: 0;
+  }
+
+  /* ─── BOTTOM BAR ─── */
+  .bottom-bar {
+    display: grid;
+    grid-template-columns: 1fr 1fr 280px;
+    gap: 16px;
+    margin-top: 12px;
+  }
+
+  .security-grid {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .sec-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 8px;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--border);
+    font-size: 9px;
+  }
+  .sec-item .sec-icon {
+    font-size: 12px;
+  }
+  .sec-item .sec-label {
+    font-weight: 600;
+    color: var(--text);
+    font-size: 8.5px;
+  }
+  .sec-item .sec-desc {
+    font-size: 7.5px;
+    color: var(--text-dim);
+  }
+
+  .tech-stack-grid {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .tech-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--border);
+    font-size: 9px;
+  }
+  .tech-item .tech-icon { font-size: 14px; }
+  .tech-item .tech-name { font-weight: 600; color: var(--text); }
+  .tech-item .tech-role { color: var(--text-dim); font-size: 8px; }
+
+  /* ─── SIDEBAR: UNIQUE ─── */
+  .unique-sidebar {
+    position: relative;
+  }
+  .unique-item {
+    display: flex;
+    gap: 8px;
+    padding: 8px;
+    border-radius: 8px;
+    margin-bottom: 6px;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.015);
+  }
+  .unique-item .u-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    flex-shrink: 0;
+  }
+  .unique-item .u-title {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-bright);
+    margin-bottom: 2px;
+  }
+  .unique-item .u-desc {
+    font-size: 8.5px;
+    color: var(--text-dim);
+    line-height: 1.3;
+  }
+
+  /* Accent colors per section */
+  .accent-cyan .card-title { color: var(--cyan); }
+  .accent-cyan .num { background: var(--cyan-dim); color: var(--cyan); }
+  .accent-green .card-title { color: var(--green); }
+  .accent-green .num { background: var(--green-dim); color: var(--green); }
+  .accent-purple .card-title { color: var(--purple); }
+  .accent-purple .num { background: var(--purple-dim); color: var(--purple); }
+  .accent-orange .card-title { color: var(--orange); }
+  .accent-orange .num { background: var(--orange-dim); color: var(--orange); }
+  .accent-pink .card-title { color: var(--pink); }
+  .accent-pink .num { background: var(--pink-dim); color: var(--pink); }
+
+  .divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border), transparent);
+    margin: 6px 0;
+  }
+
+  .response-types {
+    display: flex;
+    gap: 6px;
+    margin-top: 6px;
+  }
+  .resp-type {
+    flex: 1;
+    text-align: center;
+    padding: 6px 4px;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--border);
+  }
+  .resp-type .resp-icon { font-size: 14px; margin-bottom: 2px; }
+  .resp-type .resp-label { font-size: 8px; color: var(--text-dim); }
+</style>
+</head>
+<body>
+<div class="diagram">
+
+  <!-- ═══ HEADER ═══ -->
+  <div class="header">
+    <div class="header-left">
+      <h1>DAILY AI ARCHITECTURE</h1>
+      <div class="subtitle">Production-Grade Dual-Agent Autonomous Commerce System — Track 2: Optimize</div>
+      <div class="header-tags">
+        <span>Context-Aware</span>
+        <span>Real-Time</span>
+        <span>Actionable</span>
+        <span>Built on Google Gemini</span>
+        <span>Supabase</span>
+        <span>React Native</span>
+      </div>
+    </div>
+    <div class="logo">
+      <div class="logo-icon">D</div>
+      Daily
+    </div>
+  </div>
+
+  <!-- ═══ MAIN 3-COLUMN GRID ═══ -->
+  <div class="main-grid">
+
+    <!-- ─── LEFT: USERS ─── -->
+    <div>
+      <div class="section-label">1. Users & App Interface</div>
+
+      <!-- Consumer -->
+      <div class="card user-block" style="margin-bottom: 12px;">
+        <div class="user-label">
+          <div class="icon" style="background: var(--cyan-dim);">🛒</div>
+          <div>
+            <div class="name">STORE CHAT</div>
+            <div class="role">Delta — Virtual Assistant (B2C)</div>
+          </div>
+        </div>
+        <div class="chat-bubble user-msg">Oi! Tem horário pra hoje? 💅</div>
+        <div class="chat-time">10:30 AM</div>
+        <div class="chat-bubble ai-msg">Olá! 🩷 Temos sim! Deixa eu ver os horários disponíveis pra você...</div>
+        <div class="chat-time">10:30 AM</div>
+        <div class="user-desc">
+          <strong>CONSUMER</strong> — End customer looking for services, asking questions and booking appointments through natural conversation.
+        </div>
+      </div>
+
+      <!-- Professional -->
+      <div class="card user-block">
+        <div class="user-label">
+          <div class="icon" style="background: var(--purple-dim);">💼</div>
+          <div>
+            <div class="name">BUSINESS CHAT</div>
+            <div class="role">Consultora Daily — AI Business Partner (B2B)</div>
+          </div>
+        </div>
+        <div class="chat-bubble user-msg">Me dá uma ideia de post pro Dia dos Namorados</div>
+        <div class="chat-time">09:15 AM</div>
+        <div class="chat-bubble ai-msg">Boa! 💕 Pra data, sugiro um post de "presente pra quem você ama"...</div>
+        <div class="chat-time">09:16 AM</div>
+        <div class="user-desc">
+          <strong>PROFESSIONAL</strong> — Business owner managing operations, seeking marketing insights, content ideas and operational support.
+        </div>
+      </div>
+
+      <!-- What Makes Unique (in left sidebar bottom) -->
+      <div style="margin-top: 12px;">
+        <div class="section-label">What Makes Daily Unique</div>
+        <div class="unique-item">
+          <div class="u-icon" style="background: var(--cyan-dim);">🎭</div>
+          <div>
+            <div class="u-title">Dual Personas</div>
+            <div class="u-desc">Different experiences optimized for Consumers (Delta) and Professionals (Consultora).</div>
+          </div>
+        </div>
+        <div class="unique-item">
+          <div class="u-icon" style="background: var(--green-dim);">⚡</div>
+          <div>
+            <div class="u-title">3-Layer Classifier</div>
+            <div class="u-desc">0-token regex → 10-token micro-call → Full LLM. Handles 40%+ queries at zero cost.</div>
+          </div>
+        </div>
+        <div class="unique-item">
+          <div class="u-icon" style="background: var(--purple-dim);">🧠</div>
+          <div>
+            <div class="u-title">Context-Aware</div>
+            <div class="u-desc">Business profile + live catalog + 3-layer memory + seasonal events + client history.</div>
+          </div>
+        </div>
+        <div class="unique-item">
+          <div class="u-icon" style="background: var(--orange-dim);">🎯</div>
+          <div>
+            <div class="u-title">Anti-Hallucination</div>
+            <div class="u-desc">Temp 0.3 transactional (Delta) / 0.68 advisory (Consultora). Payload compression.</div>
+          </div>
+        </div>
+        <div class="unique-item">
+          <div class="u-icon" style="background: var(--pink-dim);">🔄</div>
+          <div>
+            <div class="u-title">Closed-Loop Learning</div>
+            <div class="u-desc">Intent feedback table auto-collects classifier errors for continuous improvement.</div>
+          </div>
+        </div>
+        <div class="unique-item">
+          <div class="u-icon" style="background: var(--yellow-dim);">🛡️</div>
+          <div>
+            <div class="u-title">Production-Grade</div>
+            <div class="u-desc">Dual rate limiting, SSE streaming, observability pipeline, exponential backoff.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── CENTER: AI ENGINE ─── -->
+    <div class="center-col">
+      <div class="section-label">2. AI Orchestration Engine — Understands, Thinks and Acts</div>
+
+      <!-- 2.1 Classifier -->
+      <div class="card classifier-card accent-cyan">
+        <div class="card-title">
+          <span class="num">2.1</span>
+          3-Layer Hybrid Intent Classifier
+        </div>
+        <div class="layer-row layer1">
+          <div class="layer-num">1</div>
+          <div class="layer-name">Local Regex Classifier</div>
+          <div class="layer-detail">Multi-word patterns with weighted negation scoring (confidence ≥ 0.8)</div>
+          <div class="layer-cost">0 tokens · 0ms</div>
+        </div>
+        <div class="layer-row layer2">
+          <div class="layer-num">2</div>
+          <div class="layer-name">Gemini Micro-Call</div>
+          <div class="layer-detail">Lightweight 10-token classification at temperature 0.1 (confidence 0.4–0.8)</div>
+          <div class="layer-cost">10 tokens · ~200ms</div>
+        </div>
+        <div class="layer-row layer3">
+          <div class="layer-num">3</div>
+          <div class="layer-name">Full Gemini LLM</div>
+          <div class="layer-detail">Complex questions requiring reasoning, context, and tool use</div>
+          <div class="layer-cost">Full inference</div>
+        </div>
+        <div class="feedback-loop">
+          🔄 Closed-Loop Optimization → <span class="code-name" style="color: var(--orange);">intent_feedback</span> table auto-collects misclassifications for model retraining
+        </div>
+      </div>
+
+      <!-- 2.2 Context + 2.3 Gemini -->
+      <div class="engine-row">
+        <div class="card accent-green">
+          <div class="card-title">
+            <span class="num">2.2</span>
+            Context Builder
+          </div>
+          <div class="context-items">
+            <div class="ctx-item"><div class="dot" style="background: var(--green);"></div>Professional profile & bio</div>
+            <div class="ctx-item"><div class="dot" style="background: var(--green);"></div>Services, prices & catalog</div>
+            <div class="ctx-item"><div class="dot" style="background: var(--green);"></div>Real-time availability (RPC)</div>
+            <div class="ctx-item"><div class="dot" style="background: var(--green);"></div>Persistent memory (3-layer)</div>
+            <div class="ctx-item"><div class="dot" style="background: var(--green);"></div>Seasonal events (next 30 days)</div>
+            <div class="ctx-item"><div class="dot" style="background: var(--green);"></div>Client history & preferences</div>
+            <div class="ctx-item"><div class="dot" style="background: var(--green);"></div>Top-performing posts</div>
+            <div class="ctx-item"><div class="dot" style="background: var(--green);"></div>Upcoming appointments</div>
+            <div class="ctx-item"><div class="dot" style="background: var(--green);"></div>Missing data detection</div>
+          </div>
+          <div class="divider"></div>
+          <div style="font-size: 8.5px; color: var(--text-dim);">
+            ⏱ Auto-refresh TTL: 5 min<br>
+            📦 Payload compression for token efficiency
+          </div>
+        </div>
+
+        <div class="card gemini-box">
+          <div class="card-title" style="justify-content: center;">
+            <span class="num" style="background: rgba(66,133,244,0.15); color: #4285f4;">2.3</span>
+            <span style="color: #4285f4;">Google Gemini LLM</span>
+          </div>
+          <div class="gemini-logo">Gemini</div>
+          <div class="model-name">Gemini 2.5 Flash · The Main Brain</div>
+          <div class="gemini-caps">
+            <div class="gem-cap">🔍 Understands context</div>
+            <div class="gem-cap">🧠 Reasoning & planning</div>
+            <div class="gem-cap">⚡ Decides & uses tools</div>
+            <div class="gem-cap">📡 SSE Streaming</div>
+          </div>
+          <div class="divider"></div>
+          <div style="font-size: 8.5px; color: var(--text-dim); text-align: left; margin-top: 4px;">
+            <strong style="color: var(--text);">Temperature Calibration:</strong><br>
+            Delta (B2C): <strong style="color: var(--cyan);">0.3</strong> — deterministic bookings<br>
+            Consultora (B2B): <strong style="color: var(--purple);">0.68</strong> — creative advisory<br>
+            Micro-classifier: <strong style="color: var(--yellow);">0.1</strong> — intent resolution
+          </div>
+        </div>
+      </div>
+
+      <!-- 2.4 Function Calling -->
+      <div class="card accent-orange">
+        <div class="card-title">
+          <span class="num">2.4</span>
+          Function Calling (Tools) — AI Takes Action Through Secure Tools
+        </div>
+        <div class="tools-grid">
+          <div class="tool-item tool-b2c">
+            <div class="tool-icon">🗓️</div>
+            <div class="tool-name">get_week_ availability</div>
+            <div class="tool-desc">PostgreSQL RPC — Check free slots</div>
+          </div>
+          <div class="tool-item tool-b2c">
+            <div class="tool-icon">✅</div>
+            <div class="tool-name">book_ appointment</div>
+            <div class="tool-desc">B2C booking with anti-double-booking</div>
+          </div>
+          <div class="tool-item tool-b2b">
+            <div class="tool-icon">📅</div>
+            <div class="tool-name">create_ appointment</div>
+            <div class="tool-desc">B2B schedule via Consultora</div>
+          </div>
+          <div class="tool-item tool-b2b">
+            <div class="tool-icon">📝</div>
+            <div class="tool-name">create_ post_draft</div>
+            <div class="tool-desc">Content + AI image prompt</div>
+          </div>
+          <div class="tool-item tool-b2b">
+            <div class="tool-icon">📆</div>
+            <div class="tool-name">generate_ content_calendar</div>
+            <div class="tool-desc">30-day post plan</div>
+          </div>
+          <div class="tool-item tool-b2b">
+            <div class="tool-icon">💰</div>
+            <div class="tool-name">suggest_ price</div>
+            <div class="tool-desc">Market pricing advice</div>
+          </div>
+          <div class="tool-item tool-b2b">
+            <div class="tool-icon">📊</div>
+            <div class="tool-name">get_ analytics</div>
+            <div class="tool-desc">Business metrics dashboard</div>
+          </div>
+          <div class="tool-item tool-b2b">
+            <div class="tool-icon">🧠</div>
+            <div class="tool-name">save_ memory</div>
+            <div class="tool-desc">B2B persistent business facts</div>
+          </div>
+          <div class="tool-item tool-b2c">
+            <div class="tool-icon">💡</div>
+            <div class="tool-name">save_client_ preference</div>
+            <div class="tool-desc">B2C silent personalization</div>
+          </div>
+          <div class="tool-item tool-shared">
+            <div class="tool-icon">🔎</div>
+            <div class="tool-name">get_item_ details</div>
+            <div class="tool-desc">Item price & description</div>
+          </div>
+        </div>
+        <div style="display: flex; gap: 12px; margin-top: 6px; font-size: 8px; color: var(--text-dim);">
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--purple-dim);margin-right:3px;vertical-align:middle;"></span> B2B Tools (Consultora)</span>
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--cyan-dim);margin-right:3px;vertical-align:middle;"></span> B2C Tools (Delta)</span>
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--green-dim);margin-right:3px;vertical-align:middle;"></span> Shared Tools</span>
+        </div>
+      </div>
+
+      <!-- 2.5 Tier Routing + Response -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <div class="card accent-pink">
+          <div class="card-title">
+            <span class="num">2.5</span>
+            Tier-Based AI Routing
+          </div>
+          <div class="tier-grid">
+            <div class="tier-box tier-free">
+              <h4>🆓 Free Impact Tier</h4>
+              <ul>
+                <li>Optimized low-cost models</li>
+                <li>Product-Led Growth engine</li>
+                <li>Acquisition funnel</li>
+                <li>Near-zero token cost</li>
+              </ul>
+            </div>
+            <div class="tier-box tier-premium">
+              <h4>⭐ Premium Tier</h4>
+              <ul>
+                <li>Gemini 2.5 Flash (Full)</li>
+                <li>Imagen 3 <span class="tier-tag">Roadmap</span></li>
+                <li>Veo API <span class="tier-tag">Roadmap</span></li>
+                <li>Server-side subscription check</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="border-color: rgba(255,255,255,0.08);">
+          <div class="card-title" style="color: var(--text);">
+            <span class="num" style="background: rgba(255,255,255,0.06); color: var(--text);">2.6</span>
+            Final Response
+          </div>
+          <div style="font-size: 9px; color: var(--text-dim); margin-bottom: 6px;">Natural reply + smart visual cards via SSE Streaming</div>
+          <div class="response-types">
+            <div class="resp-type">
+              <div class="resp-icon">💬</div>
+              <div class="resp-label">Text Response</div>
+            </div>
+            <div class="resp-type">
+              <div class="resp-icon">⚡</div>
+              <div class="resp-label">Action Cards</div>
+            </div>
+            <div class="resp-type">
+              <div class="resp-icon">✅</div>
+              <div class="resp-label">Appointment Confirmation</div>
+            </div>
+            <div class="resp-type">
+              <div class="resp-icon">💡</div>
+              <div class="resp-label">Suggestions & Insights</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── RIGHT: DATA LAYER ─── -->
+    <div class="data-col">
+      <div class="section-label">3. Data & Persistence Layer — Supabase</div>
+
+      <div class="card data-card" style="border-color: rgba(0, 232, 143, 0.12);">
+        <h4 style="color: var(--green);">
+          <span style="font-size: 14px;">🗄️</span>
+          3.1 Business & Customer Data
+        </h4>
+        <ul>
+          <li><span class="code-name">profiles</span> — Professionals, stores, consumers</li>
+          <li><span class="code-name">marketplace_items</span> — Services, products & prices</li>
+          <li><span class="code-name">client_profiles</span> — Per-merchant client records</li>
+          <li><span class="code-name">posts</span> — Content & engagement metrics</li>
+          <li><span class="code-name">content_calendar</span> — AI-generated 30-day plans</li>
+        </ul>
+      </div>
+
+      <div class="card data-card" style="border-color: rgba(0, 212, 255, 0.12);">
+        <h4 style="color: var(--cyan);">
+          <span style="font-size: 14px;">📅</span>
+          3.2 Real-Time Scheduling
+        </h4>
+        <ul>
+          <li><span class="code-name">appointments</span> — Transactional & conflict-safe</li>
+          <li><span class="code-name">schedules</span> — Working days, breaks, slot duration</li>
+          <li><span class="code-name">get_week_availability()</span> — PostgreSQL RPC function</li>
+          <li><strong style="color: var(--cyan);">UNIQUE constraint</strong> — DB-level anti-double-booking</li>
+          <li>Transaction locking + real-time conflict detection</li>
+          <li>Automatic past-hour filtering for today</li>
+        </ul>
+      </div>
+
+      <div class="card data-card" style="border-color: rgba(167, 139, 250, 0.12);">
+        <h4 style="color: var(--purple);">
+          <span style="font-size: 14px;">🧠</span>
+          3.3 3-Layer Memory Architecture
+        </h4>
+        <ul>
+          <li><strong style="color: var(--green);">Short-term:</strong> <span class="code-name">chat_messages</span> — Session chat history (last 15-40 msgs)</li>
+          <li><strong style="color: var(--yellow);">Mid-term:</strong> <span class="code-name">ai_chat_sessions</span> — Context with TTL auto-refresh (5min)</li>
+          <li><strong style="color: var(--purple);">Long-term:</strong> <span class="code-name">professional_memory</span> — Persistent business facts with confidence scoring & TTL expiry</li>
+          <li>Deduplication with 40-char fuzzy matching</li>
+          <li>Client preference accumulation (silent)</li>
+        </ul>
+      </div>
+
+      <div class="card data-card" style="border-color: rgba(255, 138, 61, 0.12);">
+        <h4 style="color: var(--orange);">
+          <span style="font-size: 14px;">📊</span>
+          3.4 Audit & Observability
+        </h4>
+        <ul>
+          <li><span class="code-name">ai_usage_logs</span> — Every tool call, latency_ms, status</li>
+          <li><span class="code-name">ai_action_feedbacks</span> — User feedback on AI actions (edited/accepted/cancelled)</li>
+          <li><span class="code-name">intent_feedback</span> — Classifier error collection (closed-loop)</li>
+          <li><span class="code-name">ai_chat_history</span> — Full conversation audit trail</li>
+          <li>Token consumption tracking per session</li>
+          <li><strong style="color: var(--orange);">100% traceable</strong> — Every autonomous action auditable</li>
+        </ul>
+      </div>
+
+      <div class="card data-card" style="border-color: rgba(255, 107, 157, 0.12);">
+        <h4 style="color: var(--pink);">
+          <span style="font-size: 14px;">🛡️</span>
+          3.5 Security & Trust
+        </h4>
+        <ul>
+          <li><strong>Edge Functions</strong> — API keys hidden server-side</li>
+          <li><strong>JWT Auth</strong> — Supabase token validation</li>
+          <li><strong>RLS Policies</strong> — Row-level security per user</li>
+          <li><strong>Dual Rate Limiting</strong> — Server (20/min) + Client (2s cooldown)</li>
+          <li><strong>Exponential Backoff</strong> — With jitter for Gemini 429s</li>
+          <li><strong>History Size Guard</strong> — Max 100 messages per request</li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══ BOTTOM: END-TO-END FLOW ═══ -->
+  <div class="flow-section">
+    <div class="flow-title">4. End-to-End AI Flow — From Message to Action in 9 Smart Steps</div>
+    <div class="flow-steps">
+      <div class="flow-step">
+        <div class="step-num" style="background: var(--cyan-dim); color: var(--cyan);">1</div>
+        <div class="step-icon">💬</div>
+        <div class="step-label">User Message</div>
+        <div class="step-text">Natural language input</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="step-num" style="background: var(--green-dim); color: var(--green);">2</div>
+        <div class="step-icon">⚡</div>
+        <div class="step-label">Intent Classifier</div>
+        <div class="step-text">3-layer: regex → micro → full</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="step-num" style="background: var(--purple-dim); color: var(--purple);">3</div>
+        <div class="step-icon">📦</div>
+        <div class="step-label">Context Builder</div>
+        <div class="step-text">Profile, catalog, memory, events</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="step-num" style="background: rgba(66,133,244,0.15); color: #4285f4;">4</div>
+        <div class="step-icon">✨</div>
+        <div class="step-label">Gemini Receives</div>
+        <div class="step-text">Full context + tools</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="step-num" style="background: var(--orange-dim); color: var(--orange);">5</div>
+        <div class="step-icon">🔧</div>
+        <div class="step-label">Function Calling</div>
+        <div class="step-text">AI decides & calls tool</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="step-num" style="background: var(--yellow-dim); color: var(--yellow);">6</div>
+        <div class="step-icon">🔒</div>
+        <div class="step-label">Tool Execution</div>
+        <div class="step-text">Transaction + validation</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="step-num" style="background: var(--green-dim); color: var(--green);">7</div>
+        <div class="step-icon">📊</div>
+        <div class="step-label">Audit & Log</div>
+        <div class="step-text">Usage logs + latency tracking</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="step-num" style="background: rgba(66,133,244,0.15); color: #4285f4;">8</div>
+        <div class="step-icon">🤖</div>
+        <div class="step-label">Gemini Response</div>
+        <div class="step-text">Generates final answer</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="step-num" style="background: var(--cyan-dim); color: var(--cyan);">9</div>
+        <div class="step-icon">📡</div>
+        <div class="step-label">SSE Streaming</div>
+        <div class="step-text">Real-time delivery to client</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ BOTTOM BAR ═══ -->
+  <div class="bottom-bar">
+    <div>
+      <div class="section-label">Security & Trust</div>
+      <div class="security-grid">
+        <div class="sec-item">
+          <span class="sec-icon">🔐</span>
+          <div>
+            <div class="sec-label">Edge Functions</div>
+            <div class="sec-desc">API keys hidden</div>
+          </div>
+        </div>
+        <div class="sec-item">
+          <span class="sec-icon">🔑</span>
+          <div>
+            <div class="sec-label">JWT Auth</div>
+            <div class="sec-desc">Secure sessions</div>
+          </div>
+        </div>
+        <div class="sec-item">
+          <span class="sec-icon">🛡️</span>
+          <div>
+            <div class="sec-label">RLS Policies</div>
+            <div class="sec-desc">Row-level security</div>
+          </div>
+        </div>
+        <div class="sec-item">
+          <span class="sec-icon">🔒</span>
+          <div>
+            <div class="sec-label">Encrypted Data</div>
+            <div class="sec-desc">In transit & at rest</div>
+          </div>
+        </div>
+        <div class="sec-item">
+          <span class="sec-icon">📋</span>
+          <div>
+            <div class="sec-label">Full Audit Trail</div>
+            <div class="sec-desc">100% traceable</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label">Tech Stack</div>
+      <div class="tech-stack-grid">
+        <div class="tech-item">
+          <span class="tech-icon">✨</span>
+          <div>
+            <div class="tech-name">Google Gemini</div>
+            <div class="tech-role">LLM</div>
+          </div>
+        </div>
+        <div class="tech-item">
+          <span class="tech-icon">⚡</span>
+          <div>
+            <div class="tech-name">Supabase</div>
+            <div class="tech-role">PostgreSQL</div>
+          </div>
+        </div>
+        <div class="tech-item">
+          <span class="tech-icon">📱</span>
+          <div>
+            <div class="tech-name">Expo / React Native</div>
+            <div class="tech-role">Mobile App</div>
+          </div>
+        </div>
+        <div class="tech-item">
+          <span class="tech-icon">🔷</span>
+          <div>
+            <div class="tech-name">TypeScript</div>
+            <div class="tech-role">Edge Functions</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label">Track 2: Key Optimizations</div>
+      <div style="display: flex; flex-direction: column; gap: 4px;">
+        <div style="display: flex; align-items: center; gap: 6px; font-size: 9px; padding: 4px 6px; border-radius: 4px; background: var(--green-dim);">
+          <span style="color: var(--green); font-weight: 700;">①</span>
+          <span>Zero-Token Local Intent Classifier (40%+ queries)</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 6px; font-size: 9px; padding: 4px 6px; border-radius: 4px; background: var(--cyan-dim);">
+          <span style="color: var(--cyan); font-weight: 700;">②</span>
+          <span>Strict Anti-Double-Booking (DB UNIQUE + RPC)</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 6px; font-size: 9px; padding: 4px 6px; border-radius: 4px; background: var(--orange-dim);">
+          <span style="color: var(--orange); font-weight: 700;">③</span>
+          <span>Enterprise Observability & Audit Pipeline</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 6px; font-size: 9px; padding: 4px 6px; border-radius: 4px; background: var(--purple-dim);">
+          <span style="color: var(--purple); font-weight: 700;">④</span>
+          <span>Anti-Hallucination Temperature Calibration</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
