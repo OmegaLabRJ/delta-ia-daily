@@ -177,7 +177,7 @@ The system uses an advanced context builder that isolates memory per subagent. I
 
 **Ephemeral Handoff:** Agents share context via `SessionContext`. When one agent performs an action (e.g., booking an appointment), it writes to the ephemeral session. The Router reads this session to maintain conversational continuity if a different agent is invoked in the next turn.
 
-This precise context injection allows the AI to operate at a lower temperature (`0.68`) for business-critical operations, drastically reducing hallucinations and reducing API token costs by ~60%.
+This precise context injection allows dynamic temperature calibration per subagent (e.g., `0.1` for strictly deterministic Finance/Agenda tools, and `0.68` for creative Marketing generation), drastically reducing hallucinations and cutting API token costs by ~60%.
 
 ---
 
