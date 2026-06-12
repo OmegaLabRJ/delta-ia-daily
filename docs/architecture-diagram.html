@@ -881,64 +881,27 @@
       <div class="card accent-orange">
         <div class="card-title">
           <span class="num">2.4</span>
-          8 Subagents (Agenda, CRM, Finance, etc) — Executing Domain-Specific Tools
+          8 Subagents — Executing Domain-Specific Tools
         </div>
-        <div class="tools-grid">
-          <div class="tool-item tool-b2c">
-            <div class="tool-icon">🗓️</div>
-            <div class="tool-name">get_week_ availability</div>
-            <div class="tool-desc">PostgreSQL RPC — Check free slots</div>
+        <div style="font-size: 10px; color: var(--text-dim); line-height: 1.6; display: flex; flex-direction: column; gap: 6px;">
+          <div style="background: rgba(255,255,255,0.02); padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border);">
+            <strong style="color: var(--text-bright);">📅 Agenda Agent:</strong> <span class="code-name" style="color: var(--cyan); background: rgba(0,212,255,0.06); padding: 0 3px; border-radius: 2px;">get_week_availability</span>, <span class="code-name" style="color: var(--cyan); background: rgba(0,212,255,0.06); padding: 0 3px; border-radius: 2px;">create_appointment</span>, <span class="code-name" style="color: var(--cyan); background: rgba(0,212,255,0.06); padding: 0 3px; border-radius: 2px;">book_appointment</span> (B2C)
           </div>
-          <div class="tool-item tool-b2c">
-            <div class="tool-icon">✅</div>
-            <div class="tool-name">book_ appointment</div>
-            <div class="tool-desc">B2C booking with anti-double-booking</div>
+          <div style="background: rgba(255,255,255,0.02); padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border);">
+            <strong style="color: var(--text-bright);">📣 Marketing Agent:</strong> <span class="code-name" style="color: var(--cyan); background: rgba(0,212,255,0.06); padding: 0 3px; border-radius: 2px;">create_post_draft</span>, <span class="code-name" style="color: var(--cyan); background: rgba(0,212,255,0.06); padding: 0 3px; border-radius: 2px;">generate_content_calendar</span>
           </div>
-          <div class="tool-item tool-b2b">
-            <div class="tool-icon">📅</div>
-            <div class="tool-name">create_ appointment</div>
-            <div class="tool-desc">B2B schedule via Consultora</div>
+          <div style="background: rgba(255,255,255,0.02); padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border);">
+            <strong style="color: var(--text-bright);">📊 Analytics & Finance Agents:</strong> <span class="code-name" style="color: var(--cyan); background: rgba(0,212,255,0.06); padding: 0 3px; border-radius: 2px;">get_analytics</span>
           </div>
-          <div class="tool-item tool-b2b">
-            <div class="tool-icon">📝</div>
-            <div class="tool-name">create_ post_draft</div>
-            <div class="tool-desc">Content + AI image prompt</div>
+          <div style="background: rgba(255,255,255,0.02); padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border);">
+            <strong style="color: var(--text-bright);">💰 Pricing Agent:</strong> <span class="code-name" style="color: var(--cyan); background: rgba(0,212,255,0.06); padding: 0 3px; border-radius: 2px;">suggest_price</span>
           </div>
-          <div class="tool-item tool-b2b">
-            <div class="tool-icon">📆</div>
-            <div class="tool-name">generate_ content_calendar</div>
-            <div class="tool-desc">30-day post plan</div>
+          <div style="background: rgba(255,255,255,0.02); padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border);">
+            <strong style="color: var(--text-bright);">🧠 Chat & CRM Agents:</strong> <span class="code-name" style="color: var(--cyan); background: rgba(0,212,255,0.06); padding: 0 3px; border-radius: 2px;">save_memory</span>, <span class="code-name" style="color: var(--cyan); background: rgba(0,212,255,0.06); padding: 0 3px; border-radius: 2px;">save_client_preference</span>
           </div>
-          <div class="tool-item tool-b2b">
-            <div class="tool-icon">💰</div>
-            <div class="tool-name">suggest_ price</div>
-            <div class="tool-desc">Market pricing advice</div>
+          <div style="background: rgba(255,255,255,0.02); padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border);">
+            <strong style="color: var(--text-bright);">🔎 Shared Subroutines:</strong> <span class="code-name" style="color: var(--cyan); background: rgba(0,212,255,0.06); padding: 0 3px; border-radius: 2px;">get_item_details</span>
           </div>
-          <div class="tool-item tool-b2b">
-            <div class="tool-icon">📊</div>
-            <div class="tool-name">get_ analytics</div>
-            <div class="tool-desc">Business metrics dashboard</div>
-          </div>
-          <div class="tool-item tool-b2b">
-            <div class="tool-icon">🧠</div>
-            <div class="tool-name">save_ memory</div>
-            <div class="tool-desc">B2B persistent business facts</div>
-          </div>
-          <div class="tool-item tool-b2c">
-            <div class="tool-icon">💡</div>
-            <div class="tool-name">save_client_ preference</div>
-            <div class="tool-desc">B2C silent personalization</div>
-          </div>
-          <div class="tool-item tool-shared">
-            <div class="tool-icon">🔎</div>
-            <div class="tool-name">get_item_ details</div>
-            <div class="tool-desc">Item price & description</div>
-          </div>
-        </div>
-        <div style="display: flex; gap: 12px; margin-top: 6px; font-size: 8px; color: var(--text-dim);">
-          <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--purple-dim);margin-right:3px;vertical-align:middle;"></span> B2B Tools (Consultora)</span>
-          <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--cyan-dim);margin-right:3px;vertical-align:middle;"></span> B2C Tools (Delta)</span>
-          <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--green-dim);margin-right:3px;vertical-align:middle;"></span> Shared Tools</span>
         </div>
       </div>
 
@@ -1093,50 +1056,50 @@
       <div class="flow-step">
         <div class="step-num" style="background: var(--green-dim); color: var(--green);">2</div>
         <div class="step-icon">⚡</div>
-        <div class="step-label">Intent Classifier</div>
-        <div class="step-text">3-layer: regex → micro → full</div>
+        <div class="step-label">Router Agent</div>
+        <div class="step-text">3-layer Intent Classifier</div>
       </div>
       <div class="flow-arrow">→</div>
       <div class="flow-step">
         <div class="step-num" style="background: var(--purple-dim); color: var(--purple);">3</div>
-        <div class="step-icon">📦</div>
-        <div class="step-label">Context Builder</div>
-        <div class="step-text">Profile, catalog, memory, events</div>
+        <div class="step-icon">🔀</div>
+        <div class="step-label">Smart Handoff</div>
+        <div class="step-text">Router passes SessionContext</div>
       </div>
       <div class="flow-arrow">→</div>
       <div class="flow-step">
         <div class="step-num" style="background: rgba(66,133,244,0.15); color: #4285f4;">4</div>
-        <div class="step-icon">✨</div>
-        <div class="step-label">Gemini Receives</div>
-        <div class="step-text">Full context + tools</div>
+        <div class="step-icon">📦</div>
+        <div class="step-label">Micro-Context Builder</div>
+        <div class="step-text">Injects only domain data</div>
       </div>
       <div class="flow-arrow">→</div>
       <div class="flow-step">
         <div class="step-num" style="background: var(--orange-dim); color: var(--orange);">5</div>
-        <div class="step-icon">🔧</div>
-        <div class="step-label">Function Calling</div>
-        <div class="step-text">AI decides & calls tool</div>
+        <div class="step-icon">✨</div>
+        <div class="step-label">Subagent Receives</div>
+        <div class="step-text">Focused prompt + tools</div>
       </div>
       <div class="flow-arrow">→</div>
       <div class="flow-step">
         <div class="step-num" style="background: var(--yellow-dim); color: var(--yellow);">6</div>
+        <div class="step-icon">🔧</div>
+        <div class="step-label">Function Calling</div>
+        <div class="step-text">Subagent decides & calls</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="step-num" style="background: var(--green-dim); color: var(--green);">7</div>
         <div class="step-icon">🔒</div>
         <div class="step-label">Tool Execution</div>
         <div class="step-text">Transaction + validation</div>
       </div>
       <div class="flow-arrow">→</div>
       <div class="flow-step">
-        <div class="step-num" style="background: var(--green-dim); color: var(--green);">7</div>
+        <div class="step-num" style="background: rgba(66,133,244,0.15); color: #4285f4;">8</div>
         <div class="step-icon">📊</div>
         <div class="step-label">Audit & Log</div>
-        <div class="step-text">Usage logs + latency tracking</div>
-      </div>
-      <div class="flow-arrow">→</div>
-      <div class="flow-step">
-        <div class="step-num" style="background: rgba(66,133,244,0.15); color: #4285f4;">8</div>
-        <div class="step-icon">🤖</div>
-        <div class="step-label">Gemini Response</div>
-        <div class="step-text">Generates final answer</div>
+        <div class="step-text">Usage logs + feedback collected</div>
       </div>
       <div class="flow-arrow">→</div>
       <div class="flow-step">
