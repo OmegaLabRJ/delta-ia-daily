@@ -688,7 +688,7 @@
   <div class="header">
     <div class="header-left">
       <h1>DAILY AI ARCHITECTURE</h1>
-      <div class="subtitle">Production-Grade Dual-Agent Autonomous Commerce System — Track 2: Optimize</div>
+      <div class="subtitle">Production-Grade Subagent Autonomous Commerce System — Track 2: Optimize</div>
       <div class="header-tags">
         <span>Context-Aware</span>
         <span>Real-Time</span>
@@ -735,7 +735,7 @@
           <div class="icon" style="background: var(--purple-dim);">💼</div>
           <div>
             <div class="name">BUSINESS CHAT</div>
-            <div class="role">Consultora Daily — AI Business Partner (B2B)</div>
+            <div class="role">Consultora Daily — Router + 8 Subagents (B2B)</div>
           </div>
         </div>
         <div class="chat-bubble user-msg">Me dá uma ideia de post pro Dia dos Namorados</div>
@@ -775,7 +775,7 @@
           <div class="u-icon" style="background: var(--orange-dim);">🎯</div>
           <div>
             <div class="u-title">Anti-Hallucination</div>
-            <div class="u-desc">Temp 0.3 transactional (Delta) / 0.68 advisory (Consultora). Payload compression.</div>
+            <div class="u-desc">Context isolation per Subagent (saves 60% tokens). Temp 0.3 (Delta) / 0.68 (Consultora).</div>
           </div>
         </div>
         <div class="unique-item">
@@ -797,7 +797,7 @@
 
     <!-- ─── CENTER: AI ENGINE ─── -->
     <div class="center-col">
-      <div class="section-label">2. AI Orchestration Engine — Understands, Thinks and Acts</div>
+      <div class="section-label">2. AI Orchestration Engine (Router + 8 Subagents) — Understands, Thinks and Acts</div>
 
       <!-- 2.1 Classifier -->
       <div class="card classifier-card accent-cyan">
@@ -880,7 +880,7 @@
       <div class="card accent-orange">
         <div class="card-title">
           <span class="num">2.4</span>
-          Function Calling (Tools) — AI Takes Action Through Secure Tools
+          8 Subagents (Agenda, CRM, Finance, etc) — Executing Domain-Specific Tools
         </div>
         <div class="tools-grid">
           <div class="tool-item tool-b2c">
@@ -1038,7 +1038,7 @@
         </h4>
         <ul>
           <li><strong style="color: var(--green);">Short-term:</strong> <span class="code-name">chat_messages</span> — Session chat history (last 15-40 msgs)</li>
-          <li><strong style="color: var(--yellow);">Mid-term:</strong> <span class="code-name">ai_chat_sessions</span> — Context with TTL auto-refresh (5min)</li>
+          <li><strong style="color: var(--yellow);">Mid-term (Handoff):</strong> <span class="code-name">SessionContext</span> — Ephemeral inter-agent memory sharing (5min TTL)</li>
           <li><strong style="color: var(--purple);">Long-term:</strong> <span class="code-name">professional_memory</span> — Persistent business facts with confidence scoring & TTL expiry</li>
           <li>Deduplication with 40-char fuzzy matching</li>
           <li>Client preference accumulation (silent)</li>
@@ -1229,7 +1229,7 @@
       <div style="display: flex; flex-direction: column; gap: 4px;">
         <div style="display: flex; align-items: center; gap: 6px; font-size: 9px; padding: 4px 6px; border-radius: 4px; background: var(--green-dim);">
           <span style="color: var(--green); font-weight: 700;">①</span>
-          <span>Zero-Token Local Intent Classifier (40%+ queries)</span>
+          <span>8-Subagent Architecture (60% Token Cost Reduction)</span>
         </div>
         <div style="display: flex; align-items: center; gap: 6px; font-size: 9px; padding: 4px 6px; border-radius: 4px; background: var(--cyan-dim);">
           <span style="color: var(--cyan); font-weight: 700;">②</span>
