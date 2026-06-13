@@ -1,12 +1,13 @@
-# 🧠 Daily: Headless AI (IAaaS) Vision & Business Model
+# 🧠 Daily: Enterprise Vertical IAaaS Vision
 
-## Beyond the App: The Headless AI Vision
+## Beyond the App: The Vertical AI Factory
 
-While **Daily** is our flagship product and initial go-to-market application, our underlying architecture is fundamentally designed as a **Headless AI (AI-as-a-Service / IAaaS)** engine.
+While **Daily** is our flagship product and initial go-to-market application, our underlying architecture is fundamentally designed as a **Vertical AI SaaS (IAaaS)** engine for Enterprise and B2B Franchising.
 
-By isolating the conversational intelligence, intent classifiers, and deterministic function calling completely within backend **Supabase Edge Functions**, we have built a proprietary AI infrastructure rather than just an app feature.
+By completely decoupling the conversational intelligence, intent routing (8-Subagents), and deterministic function calling from the frontend, we have built a proprietary "AI Factory" rather than just a single app feature.
 
-**Daily** serves as our primary socio-digital validation—proving this engine's capability to orchestrate complex transactions for micro-entrepreneurs. However, this decoupled "Agent API" is fully scalable. In the future, this exact same infrastructure can be seamlessly white-labeled and plugged into the Creator Economy (automating DMs for influencers), B2B enterprise websites, or entirely new verticals (like real estate or healthcare) with minimal refactoring.
+**The Power of Vertical Templates:**
+Instead of operating a multi-tenant SaaS where 10,000 businesses share a generic database (risking data leakage and limiting customization), we operate on a **Dedicated Single-Tenant Model**. We create "Vertical AI Templates" (e.g., Health, Food, Retail) containing highly specialized Database Schemas and Agent Contexts. When a new B2B client or franchise onboards, we clone the template, apply their White-Label branding, and deploy a 100% isolated and secure AI Brain in minutes.
 
 ---
 

@@ -28,10 +28,33 @@ export async function executeCreateAppointment(professionalId: string, args: any
     return { success: false, error: "⚠️ Já existe um agendamento para este horário. Peça outro horário." };
   }
 
+  // NOVO: find-or-create do cliente em client_profiles
+  const { data: existingClient } = await supabase
+    .from("client_profiles" as any)
+    .select("id")
+    .eq("professional_id", professionalId)
+    .ilike("client_name", args.client_name)
+    .maybeSingle();
+
+  let clientProfileId: string | null = null;
+  if (existingClient) {
+    clientProfileId = (existingClient as any).id;
+  } else {
+    const { data: newClient, error: clientErr } = await supabase
+      .from("client_profiles" as any)
+      .insert({ professional_id: professionalId, client_name: args.client_name })
+      .select("id")
+      .single();
+    if (!clientErr && newClient) {
+      clientProfileId = (newClient as any).id;
+    }
+  }
+
   const { data, error } = await supabase
     .from("appointments" as any)
     .insert({
       client_id: professionalId,
+      client_profile_id: clientProfileId,
       service_id: matchedService.id,
       appointment_date: args.date,
       appointment_time: args.time,

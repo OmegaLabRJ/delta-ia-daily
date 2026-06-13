@@ -36,7 +36,7 @@ export async function executeAgent(
   // Incluir info da última ação se houver handoff
   if (session.lastActionResult) {
     const handoffNote = `[A ação anterior foi: ${session.lastActionResult.tool} → ${session.lastActionResult.summary}]`;
-    fullPrompt.concat(`\n${handoffNote}`);
+    fullPrompt += `\n${handoffNote}`;
   }
 
   // Chamada ao Gemini

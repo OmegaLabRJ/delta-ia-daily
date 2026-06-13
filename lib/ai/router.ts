@@ -175,8 +175,12 @@ export class Router {
   ): Promise<AgentResponse & { agentUsed: AgentType }> {
     const session = this.sessionManager.get();
 
+    // NOVO: atualizar isOnboarding a partir do perfil real
+    const routerCtx = await buildRouterContext(professionalId, this.chatHistory, session);
+    this.sessionManager.setOnboarding(routerCtx.session.isOnboarding);
+
     // Classificar intenção
-    const classification = await classify(message, session, this.chatHistory);
+    const classification = await classify(message, this.sessionManager.get(), this.chatHistory);
     console.log(`[Router] → ${classification.agent} (confidence: ${classification.confidence}, method: ${classification.method})`);
 
     // Obter agente

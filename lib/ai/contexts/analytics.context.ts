@@ -2,23 +2,29 @@ import { supabase } from "@/lib/supabase";
 import type { AnalyticsContextData } from "../types";
 
 export async function buildAnalyticsContext(professionalId: string): Promise<AnalyticsContextData> {
-  const [profileRes, itemsRes, appointmentsRes] = await Promise.all([
+  const [profileRes, itemsRes] = await Promise.all([
     supabase.from("profiles").select("followers_count, posts_count, avg_rating, total_reviews").eq("id", professionalId).single(),
     supabase
       .from("marketplace_items" as any)
-      .select("name, views_count, whatsapp_clicks")
+      .select("id, name, views_count, whatsapp_clicks")
       .eq("seller_id", professionalId)
       .eq("is_active", true)
       .order("views_count", { ascending: false }),
-    supabase
-      .from("appointments" as any)
-      .select("status")
-      .in("status", ["confirmed", "completed", "cancelled"]),
   ]);
 
   const profile = profileRes.data as any;
   const items = (itemsRes.data || []) as any[];
-  const appointments = (appointmentsRes.data || []) as any[];
+  const serviceIds = items.map(i => i.id);
+
+  let appointments: any[] = [];
+  if (serviceIds.length > 0) {
+    const { data } = await supabase
+      .from("appointments" as any)
+      .select("status")
+      .in("service_id", serviceIds)
+      .in("status", ["confirmed", "completed", "cancelled"]);
+    appointments = data || [];
+  }
 
   const totalViews = items.reduce((acc, i) => acc + (i.views_count || 0), 0);
   const totalClicks = items.reduce((acc, i) => acc + (i.whatsapp_clicks || 0), 0);

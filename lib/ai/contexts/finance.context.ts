@@ -9,18 +9,25 @@ export async function buildFinanceContext(professionalId: string): Promise<Finan
   const currentMonth = new Date();
   const monthYear = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, "0")}`;
 
-  const [servicesRes, appointmentsRes, goalRes] = await Promise.all([
-    supabase
-      .from("marketplace_items" as any)
-      .select("id, name, price")
-      .eq("seller_id", professionalId)
-      .eq("is_active", true)
-      .eq("item_type", "service"),
-    supabase
-      .from("appointments" as any)
-      .select("service_id, appointment_date, status")
-      .eq("status", "completed")
-      .gte("appointment_date", dtThirty),
+  const servicesRes = await supabase
+    .from("marketplace_items" as any)
+    .select("id, name, price")
+    .eq("seller_id", professionalId)
+    .eq("is_active", true)
+    .eq("item_type", "service");
+
+  const services = (servicesRes.data || []) as any[];
+  const serviceIds = services.map(s => s.id);
+
+  const [appointmentsRes, goalRes] = await Promise.all([
+    serviceIds.length > 0
+      ? supabase
+          .from("appointments" as any)
+          .select("service_id, appointment_date, status")
+          .in("service_id", serviceIds)
+          .eq("status", "completed")
+          .gte("appointment_date", dtThirty)
+      : Promise.resolve({ data: [] }),
     supabase
       .from("revenue_goals" as any)
       .select("monthly_target")
@@ -29,7 +36,6 @@ export async function buildFinanceContext(professionalId: string): Promise<Finan
       .maybeSingle(),
   ]);
 
-  const services = (servicesRes.data || []) as any[];
   const completedAppts = (appointmentsRes.data || []) as any[];
   const serviceMap = new Map(services.map(s => [s.id, { name: s.name, price: Number(s.price) }]));
 
