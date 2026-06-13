@@ -422,13 +422,19 @@ REGRAS INEGOCIÁVEIS DA COMPRA:
           if (error) throw error;
           
           // COMPRESSÃO DE PAYLOAD: Reduz drastically o JSON para não estourar o limite de tokens do Gemini
+          const currentHourMin = currentTime.slice(0, 5);
           const compactData = data?.map((day: any) => ({
             d: day.date,
             s: day.services.map((s: any) => ({
               id: s.service_id,
               n: s.service_name,
               p: s.price,
-              t: s.available_times.join(',')
+              t: s.available_times.filter((tStr: string) => {
+                 if (day.date === dtStart) {
+                    return tStr >= currentHourMin;
+                 }
+                 return true;
+              }).join(',')
             }))
           }));
 
