@@ -425,7 +425,7 @@ export default function AIChatScreen() {
               text: "Calcular",
               onPress: async (service_name?: string) => {
                 if (!service_name) return;
-                const { executeSuggestPrice } = await import('@/lib/ai-tools');
+                const { executeSuggestPrice } = await import('@/lib/ai/tools/pricing.tools');
                 const result = await executeSuggestPrice({ service_name, region_type: "popular" }); // Default region for now
                 if (result.success) {
                    addLocalMessage(`Aqui está uma estimativa para **${service_name}**:\n\n💰 **Preço sugerido:** R$ ${result.suggested_price}\n📊 **Faixa:** ${result.range}\n\n${result.justification}`, result);
