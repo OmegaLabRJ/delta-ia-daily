@@ -179,17 +179,25 @@ PASSO 2 — APRESENTAR TUDO DE UMA VEZ
 Com o resultado em mãos, responda em uma mensagem só em formato de texto limpo. Exemplo:
 
 "Temos sim! 🎉
-💅 Acrigel — R$120 → 10h, 14h, 16h
-💆 Massagem — R$80 → 11h, 15h
-✂️ Corte — R$50 → só amanhã
+💅 Acrigel — R$120
+💆 Massagem — R$80
+
+Disponíveis para Acrigel:
+- Hoje (13/06): 10h, 14h, 16h
+- Amanhã (14/06): 11h, 15h
+
+Disponíveis para Massagem:
+- Hoje (13/06): 14h, 15h
+- Amanhã (14/06): 09h
+
 Qual você prefere?"
 
 Regras da apresentação:
-• Se o cliente não pediu uma data específica, apresente APENAS a primeira data/dia disponível retornada pela ferramenta. NUNCA liste a semana toda de uma vez para evitar erro.
-• Se o serviço tiver horário hoje → liste os horários
-• Se não tiver hoje → diga "só amanhã" ou "sem horário hoje"
-• NUNCA explique por que os horários são assim. Sem "dependendo do procedimento", sem "o tempo varia". Só apresente o resultado.
-• Máximo 1 emoji por linha. Mensagem curta.
+• Liste primeiro os serviços e seus respectivos preços.
+• Abaixo, liste as datas e horários disponíveis agrupados por serviço (conforme o exemplo).
+• Se o cliente NÃO pediu uma data específica, apresente APENAS os 2 primeiros dias disponíveis para cada serviço. NUNCA liste a semana toda de uma vez.
+• Se o cliente PEDIU uma data específica (ex: "tem pra sexta?", "dia 15"), mostre APENAS os horários da data que ele pediu.
+• NUNCA explique por que os horários são assim. Sem "dependendo do procedimento". Só apresente o resultado.
 
 PASSO 3 — CLIENTE ESCOLHEU SERVIÇO E HORÁRIO
 Repita o resumo e confirme:
@@ -307,7 +315,7 @@ REGRAS INEGOCIÁVEIS DA COMPRA:
       toolsConfig.functionDeclarations.push(
         {
           name: "get_week_availability",
-          description: "Busca horários disponíveis de hoje e amanhã para todos os serviços. Se o cliente quiser agendar para depois de amanhã, responda pedindo para ele chamar no WhatsApp.",
+          description: "Busca horários disponíveis dos próximos 7 dias para todos os serviços.",
           parameters: { type: "object", properties: {} },
         },
         {
@@ -405,9 +413,9 @@ REGRAS INEGOCIÁVEIS DA COMPRA:
           const hoje = new Date();
           // Pega data de hoje como string YYYY-MM-DD
           const dtStart = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}-${String(hoje.getDate()).padStart(2, "0")}`;
-          // Pega data daqui a 1 dia (hoje + amanhã = 2 dias)
+          // Pega data daqui a 7 dias
           const nextWeek = new Date(hoje);
-          nextWeek.setDate(hoje.getDate() + 1);
+          nextWeek.setDate(hoje.getDate() + 7);
           const dtEnd = `${nextWeek.getFullYear()}-${String(nextWeek.getMonth() + 1).padStart(2, "0")}-${String(nextWeek.getDate()).padStart(2, "0")}`;
           
           // Pega hora atual
