@@ -24,7 +24,7 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { useSupabaseAuth } from "@/hooks/use-supabase-auth";
 import { useAIChat, type ChatMessage } from "@/hooks/use-ai-chat";
-import { trackAIFeedback } from "@/lib/ai-tools";
+import { trackAIFeedback } from "@/lib/ai";
 import { supabase } from "@/lib/supabase";
 
 const AI_AVATAR = require('@/assets/images/ai-avatar.jpg');
