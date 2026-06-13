@@ -9,7 +9,7 @@ import { supabase } from "@/lib/supabase";
 import type { AIChatMessage } from "@/lib/supabase-types";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { callGeminiProxy, resetRateLimit } from "@/lib/ai";
-import { AI_TOOLS, executeAITool } from "@/lib/ai-tools";
+
 import { classifyLocal } from "@/lib/intent-classifier";
 import { Router } from "@/lib/ai/router";
 
