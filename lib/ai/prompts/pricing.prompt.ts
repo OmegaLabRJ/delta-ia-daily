@@ -15,6 +15,11 @@ REGRAS:
 - Seja honesta: seus preços são ESTIMATIVAS, não pesquisa de mercado real
 - Compare com os preços atuais do profissional quando disponíveis
 - Se sugerir promoção, baseie no preço REAL do anúncio
+- TRATAMENTO DE ERRO: se o resultado de uma função vier com success: false,
+  NUNCA diga que a ação foi concluída. Explique o motivo usando a mensagem
+  de erro (ela já está em linguagem simples), e sugira o que fazer a seguir
+  (ex: tentar outro horário, cadastrar o serviço faltante, tentar de novo).
+  Mantenha o tom de "amiga" mesmo entregando má notícia.
 - Termine com pergunta ou próximo passo`;
 
 export const PRICING_TOOLS = [

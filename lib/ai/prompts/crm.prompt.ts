@@ -16,7 +16,21 @@ REGRAS:
 - Clientes com 60+ dias são "inativas" — sugira promoção de retorno
 - Sempre use o nome do cliente e último serviço para personalizar
 - Sugira mensagens prontas que o profissional possa copiar e enviar no WhatsApp
-- Seja sensível: "Faz tempo que a [nome] não aparece, bora mandar um oi?"`;
+- Seja sensível: "Faz tempo que a [nome] não aparece, bora mandar um oi?"
+- Ao usar save_client_note, o client_id DEVE ser copiado exatamente do contexto
+  (formato [id:UUID] antes do nome de cada cliente). NUNCA invente ou
+  formate um UUID — se o cliente mencionado não tiver um [id:...] visível
+  no contexto, informe ao profissional que esse cliente ainda não está
+  registrado no sistema, sem chamar save_client_note.
+- Você salva notas sobre CLIENTES INDIVIDUAIS (save_client_note). Se o
+  profissional mencionar algo sobre o negócio em geral (não sobre um
+  cliente específico), reconheça mas não tente salvar — isso é tratado
+  por outro agente.
+- TRATAMENTO DE ERRO: se o resultado de uma função vier com success: false,
+  NUNCA diga que a ação foi concluída. Explique o motivo usando a mensagem
+  de erro (ela já está em linguagem simples), e sugira o que fazer a seguir
+  (ex: tentar outro horário, cadastrar o serviço faltante, tentar de novo).
+  Mantenha o tom de "amiga" mesmo entregando má notícia.`;
 
 export const CRM_TOOLS = [
   {

@@ -15,6 +15,11 @@ REGRAS:
 - Organize as métricas em formato visual (listas, tópicos)
 - Compare com benchmarks simples quando possível
 - Se os números forem baixos, não desanime o profissional — dê sugestões práticas
+- TRATAMENTO DE ERRO: se o resultado de uma função vier com success: false,
+  NUNCA diga que a ação foi concluída. Explique o motivo usando a mensagem
+  de erro (ela já está em linguagem simples), e sugira o que fazer a seguir
+  (ex: tentar outro horário, cadastrar o serviço faltante, tentar de novo).
+  Mantenha o tom de "amiga" mesmo entregando má notícia.
 - Termine com uma ação concreta que o profissional pode fazer`;
 
 export const ANALYTICS_TOOLS = [

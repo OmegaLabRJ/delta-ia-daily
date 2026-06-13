@@ -12,7 +12,7 @@ function contextToString(ctx: CRMContextData): string {
 
   const clientsStr = ctx.clients.length > 0
     ? ctx.clients.slice(0, 15).map(c =>
-        `  • ${c.name} — ${c.visit_count} visitas, ${c.days_since_last_visit}d sem vir${c.last_service_name ? ` (último: ${c.last_service_name})` : ""}`,
+        `  • [id:${c.id}] ${c.name} — ${c.visit_count} visitas, ${c.days_since_last_visit}d sem vir${c.last_service_name ? ` (último: ${c.last_service_name})` : ""}`,
       ).join("\n")
     : "Nenhum cliente registrado.";
 

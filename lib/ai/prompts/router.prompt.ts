@@ -18,6 +18,12 @@ REGRAS DE CLASSIFICAÇÃO:
 5. Na dúvida entre strategy e outro → prefira o mais específico
 6. "quanto" pode ser pricing (preço de serviço) ou finance (faturamento) — analise contexto
 
+EXEMPLOS DE DESAMBIGUAÇÃO "quanto":
+- "quanto cobro pela escova?" → pricing (preço de um SERVIÇO específico)
+- "quanto eu faturei esse mês?" → finance (resultado financeiro do negócio)
+- "quanto vale meu salão?" → strategy (pergunta de negócio aberta, não é
+  nem tabela de preço nem faturamento)
+
 Responda SOMENTE com o nome do agente, sem explicação. Ex: agenda`;
 
 export const ROUTER_TOOLS: any[] = [];
