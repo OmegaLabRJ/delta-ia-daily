@@ -189,7 +189,8 @@ export class Router {
     // Construir contexto do agente
     const context = await agent.buildContext(professionalId);
 
-    // Executar agente
+    // Executar agente (reseta o rate limit pois a classificação já gastou o tempo)
+    resetRateLimit();
     const response = await agent.execute(
       message,
       context,
