@@ -11,6 +11,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { callGeminiProxy, resetRateLimit } from "@/lib/ai";
 import { AI_TOOLS, executeAITool } from "@/lib/ai-tools";
 import { classifyLocal } from "@/lib/intent-classifier";
+import { Router } from "@/lib/ai/router";
 
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -207,6 +208,7 @@ export function useAIChat(userId: string | undefined) {
   const contextTimestampRef = useRef<number>(0);
   const loadedRef = useRef(false);
   const lastNativeIntentRef = useRef<{ intent: string, text: string } | null>(null);
+  const routerRef = useRef<Router>(new Router());
 
   // Load chat history from AsyncStorage on mount
   useEffect(() => {
@@ -317,16 +319,15 @@ export function useAIChat(userId: string | undefined) {
       setMessages((prev) => [...prev, userMsg]);
 
       try {
-        // --- 1. CLASSIFICADOR LOCAL DE INTENÇÃO ---
-        let { intent, confidence } = classifyLocal(text);
-        console.log(`[Intent Classifier] Intent: ${intent} | Confidence: ${confidence}`);
+        // --- 1. CLASSIFICADOR LOCAL: FAQs estáticas (0 tokens) ---
+        const { intent, confidence } = classifyLocal(text);
+        console.log(`[Intent] ${intent} (${confidence})`);
 
-        // Feedback Loop Trigger (Fase 1B)
+        // Feedback loop para intent incorreta
         if (lastNativeIntentRef.current && intent === "open_question") {
-           // O usuário provavelmente abandonou o fluxo nativo e fez uma pergunta nova/correção
            supabase.from('intent_feedback').insert({
               user_id: userId,
-              text: lastNativeIntentRef.current.text, // A mensagem original que engatilhou errado
+              text: lastNativeIntentRef.current.text,
               predicted_intent: lastNativeIntentRef.current.intent,
               confidence: confidence,
               correct: false,
@@ -334,37 +335,12 @@ export function useAIChat(userId: string | undefined) {
         }
         lastNativeIntentRef.current = null;
 
-        // Camada intermediária (Gemini Light 50 tokens)
-        if (confidence >= 0.4 && confidence < 0.8 && intent !== "open_question") {
-          const classifierData = await callGeminiProxy({
-             system_instruction: { parts: [{ text: "Classifique a intenção: [schedule_faq, schedule_action, price, faq_location, faq_hours, open_question]. Responda apenas com a palavra exata. 'schedule_action' é para criar ou marcar novo agendamento. 'schedule_faq' é para dúvidas sobre como ver a agenda." }] },
-             contents: [{ role: "user", parts: [{ text }] }],
-             generationConfig: { temperature: 0.1, maxOutputTokens: 10 }
-          });
-          const predicted = classifierData?.candidates?.[0]?.content?.parts?.[0]?.text?.trim().toLowerCase() || "open_question";
-          if (["schedule_faq", "schedule_action", "price", "faq_location", "faq_hours"].includes(predicted)) {
-             intent = predicted;
-             confidence = 0.9; // Elevamos a confiança
-          } else {
-             intent = "open_question";
-          }
-        }
-
-        if (confidence >= 0.8 && intent !== "open_question") {
-          // FLUXO NATIVO (0 tokens)
+        // FAQs estáticas — resolvidas com 0 tokens
+        if (confidence >= 0.8) {
           let nativeResponse = "";
-          
-          if (intent === "schedule_faq") {
-             nativeResponse = "🗓️ Para gerenciar seus agendamentos, toque na aba 'Agenda' no menu principal!";
-          } else if (intent === "schedule_action") {
-             nativeResponse = "";
-          } else if (intent === "price") {
-             nativeResponse = "💰 Você pode configurar seus preços e tabela de serviços tocando na aba 'Serviços' na tela inicial.";
-          } else if (intent === "faq_location") {
-             nativeResponse = "📍 Seu endereço já está salvo no seu Perfil! Você pode alterá-lo na tela de Configurações.";
-          } else if (intent === "faq_hours") {
-             nativeResponse = "⏰ O seu horário de funcionamento pode ser ajustado na seção 'Meus Horários' do seu Perfil.";
-          }
+          if (intent === "schedule_faq") nativeResponse = "🗓️ Para gerenciar seus agendamentos, toque na aba 'Agenda' no menu principal!";
+          else if (intent === "faq_location") nativeResponse = "📍 Seu endereço já está salvo no seu Perfil! Você pode alterá-lo na tela de Configurações.";
+          else if (intent === "faq_hours") nativeResponse = "⏰ O seu horário de funcionamento pode ser ajustado na seção 'Meus Horários' do seu Perfil.";
 
           if (nativeResponse) {
              const aiMsg: ChatMessage = {
@@ -376,131 +352,56 @@ export function useAIChat(userId: string | undefined) {
              setMessages((prev) => [...prev, aiMsg]);
              saveToDB(text.trim(), nativeResponse);
              lastNativeIntentRef.current = { intent, text };
-             return; // FIM! Não chama o Gemini Completo.
+             return;
           }
         }
 
-        // --- 2. FALLBACK PARA O GEMINI COMPLETO ---
-        // Rebuild context if empty or stale (>5 min)
-        const CONTEXT_TTL_MS = 5 * 60 * 1000;
-        if (!contextRef.current || (Date.now() - contextTimestampRef.current > CONTEXT_TTL_MS)) {
-          contextRef.current = await buildContextForGemini(userId);
-          contextTimestampRef.current = Date.now();
-        }
+        // --- 2. ROUTER DE SUBAGENTES ---
+        const aiMsgId = `ai_${Date.now()}`;
+        setMessages((prev) => [...prev, { id: aiMsgId, role: "assistant", content: "...", timestamp: Date.now() }]);
 
-        const fullSystemPrompt = `${SYSTEM_PROMPT}\n\n[CONTEXTO DO PROFISSIONAL]\n${contextRef.current}`;
-
-        const geminiMessages = messages.map(m => ({
-          role: m.role === "assistant" ? "model" : "user",
-          parts: [{ text: m.content }]
-        }));
-        geminiMessages.push({ role: "user", parts: [{ text: text.trim() }] });
-
-        // 1. Initial Call with Tools
-        let data = await callGeminiProxy({
-          system_instruction: { parts: [{ text: fullSystemPrompt }] },
-          contents: geminiMessages as any,
-          tools: AI_TOOLS, // Inject tools
-          generationConfig: { temperature: 0.68, maxOutputTokens: 2048 }
+        const result = await routerRef.current.route(text.trim(), userId, (chunk) => {
+          setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, content: chunk } : m));
         });
 
-        let candidate = data?.candidates?.[0]?.content;
-        let parts = candidate?.parts || [];
-        
-        let actionResult: any = null;
+        console.log(`[Router] Agent: ${result.agentUsed}`);
 
-        // 2. Check for Function Call
-        const functionCallPart = parts.find((p: any) => p.functionCall);
-        
-        if (functionCallPart) {
-          const { name, args } = functionCallPart.functionCall;
-          console.log(`[AI] Function Call detected: ${name}`, args);
-          
-          // 3. Execute Function locally
-          actionResult = await executeAITool(name, args, userId);
-          console.log(`[AI] Function Result:`, actionResult);
-          
-          // 4. Send result back to Gemini (Com Streaming)
-          const followUpMessages = [
-             ...geminiMessages,
-             { role: "model", parts: [{ functionCall: { name, args } }] },
-             { role: "function", parts: [{ functionResponse: { name, response: actionResult } }] }
-          ];
-
-          const aiMsgId = `ai_${Date.now()}`;
-          setMessages((prev) => [...prev, { id: aiMsgId, role: "assistant", content: "", timestamp: Date.now() }]);
-
-          resetRateLimit(); // Evita bloqueio local no envio da resposta da tool
-          data = await callGeminiProxy({
-            system_instruction: { parts: [{ text: fullSystemPrompt }] },
-            contents: followUpMessages as any,
-            tools: AI_TOOLS,
-            generationConfig: { temperature: 0.68, maxOutputTokens: 2048 }
-          }, (chunk) => {
-             setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, content: chunk } : m));
-          });
-        } else {
-           // Se não teve tool call inicial, precisamos exibir o stream gerado na primeira chamada
-           const aiMsgId = `ai_${Date.now()}`;
-           let streamedText = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-           setMessages((prev) => [...prev, { id: aiMsgId, role: "assistant", content: streamedText, timestamp: Date.now() }]);
-        }
-
-        // 5. Get final response text (either from initial call or after function execution)
-        let responseText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-        
-        if (!responseText && functionCallPart) {
-           responseText = "Ação realizada com sucesso! ✅ Precisa de mais alguma coisa?";
-        } else if (!responseText) {
-           responseText = "Desculpa, não consegui pensar em nada 😅";
-        }
-
-        // Atualiza a mensagem final (ou actionData) no estado que já estava lá devido ao streaming
-        setMessages(prev => {
-          const newArr = [...prev];
-          const lastMsg = newArr.at(-1);
-          if (lastMsg && lastMsg.role === "assistant") {
-            lastMsg.content = responseText;
-            lastMsg.actionData = actionResult;
-          }
-          return newArr;
-        });
+        // Atualizar mensagem com resposta final + actionData
+        setMessages(prev => prev.map(m =>
+          m.id === aiMsgId
+            ? { ...m, content: result.text, actionData: result.actionData }
+            : m
+        ));
 
         // Save to DB (fire-and-forget)
-        saveToDB(text.trim(), responseText);
+        saveToDB(text.trim(), result.text);
       } catch (e: any) {
-      console.error("[AI Chat Error]", e?.message || e);
+        console.error("[AI Chat Error]", e?.message || e);
 
-      // Mensagens específicas por tipo de erro
-      const errorMessages: Record<string, string> = {
-        RATE_LIMIT: "Muitas mensagens em pouco tempo 🕐 Aguarde uns segundos e tente de novo!",
-        TIMEOUT: "A resposta demorou muito... A IA está lenta agora. Tenta de novo em alguns segundos! ⏳",
-        AUTH_EXPIRED: "Sua sessão expirou 🔒 Feche e abra o app novamente.",
-        SERVER_ERROR: "A IA está sobrecarregada no momento 🔄 Tenta de novo em alguns segundos!",
-        NETWORK_ERROR: "Parece que sua conexão está instável 📶 Verifique sua internet e tente novamente.",
-      };
+        const errorMessages: Record<string, string> = {
+          RATE_LIMIT: "Muitas mensagens em pouco tempo 🕐 Aguarde uns segundos e tente de novo!",
+          TIMEOUT: "A resposta demorou muito... A IA está lenta agora. Tenta de novo em alguns segundos! ⏳",
+          AUTH_EXPIRED: "Sua sessão expirou 🔒 Feche e abra o app novamente.",
+          SERVER_ERROR: "A IA está sobrecarregada no momento 🔄 Tenta de novo em alguns segundos!",
+          NETWORK_ERROR: "Parece que sua conexão está instável 📶 Verifique sua internet e tente novamente.",
+        };
 
-      const msgKey = String(e?.message);
-      let errorContent = "Desculpa, tive um probleminha 😅 Tenta de novo!";
-      
-      if (msgKey === "RATE_LIMIT") errorContent = errorMessages.RATE_LIMIT;
-      else if (msgKey === "TIMEOUT") errorContent = errorMessages.TIMEOUT;
-      else if (msgKey === "AUTH_EXPIRED") errorContent = errorMessages.AUTH_EXPIRED;
-      else if (msgKey === "SERVER_ERROR") errorContent = errorMessages.SERVER_ERROR;
-      else if (msgKey === "NETWORK_ERROR") errorContent = errorMessages.NETWORK_ERROR;
+        const msgKey = String(e?.message);
+        let errorContent = "Desculpa, tive um probleminha 😅 Tenta de novo!";
+        if (errorMessages[msgKey]) errorContent = errorMessages[msgKey];
 
-      const errorMsg: ChatMessage = {
-        id: `ai_err_${Date.now()}`,
-        role: "assistant",
-        content: errorContent,
-        timestamp: Date.now(),
-      };
-      setMessages((prev) => [...prev, errorMsg]);
+        const errorMsg: ChatMessage = {
+          id: `ai_err_${Date.now()}`,
+          role: "assistant",
+          content: errorContent,
+          timestamp: Date.now(),
+        };
+        setMessages((prev) => [...prev, errorMsg]);
       } finally {
         setIsLoading(false);
       }
     },
-    [userId, messages, saveToDB],
+    [userId, saveToDB],
   );
 
   /**
@@ -509,6 +410,7 @@ export function useAIChat(userId: string | undefined) {
   const clearChat = useCallback(async () => {
     if (!userId) return;
     setMessages([]);
+    routerRef.current.reset(); // Limpa SessionContext + histórico do Router
     await AsyncStorage.removeItem(`ai_chat_${userId}`).catch(() => {});
   }, [userId]);
 

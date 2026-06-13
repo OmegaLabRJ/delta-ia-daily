@@ -23,27 +23,45 @@ This showcase is explicitly decoupled from front-end layout configurations and s
 delta-ia-daily/
 ├── README.md                        # Enterprise Architecture Documentation
 ├── docs/                            # Extensive Project Documentation
-├── core-logic/
-│   ├── ai.ts                        # Gemini LLM Initialization & Multi-Agent Configurations
-│   ├── ai-tools.ts                  # Function Calling Schema Definitions & Core Implementations
-│   └── intent-classifier.ts         # Multi-word Local Intent Parser (Latency & Cost Optimization)
+├── lib/
+│   ├── ai/                          # 8-Subagent Core Logic
+│   │   ├── router.ts                # Main intent classifier and routing orchestrator
+│   │   ├── session-context.ts       # Handoff memory manager between turns
+│   │   ├── types.ts                 # Type definitions for the 8 Subagents
+│   │   ├── agents/                  # The 8 individual Subagents
+│   │   ├── contexts/                # Isolated Context Builders
+│   │   ├── prompts/                 # Specialized Prompts for each Agent
+│   │   └── tools/                   # Isolated function tools
+│   ├── intent-classifier.ts         # Multi-word Local Intent Parser (Latency & Cost Optimization)
+│   ├── ai.ts                        # Gemini LLM Initialization
+│   └── ai-tools.ts                  # Legacy monolithic tools
 ├── database-schema/
-│   └── init_ai_schema.sql           # PostgreSQL Schema: 3-Layer Memory, Audit Logs, and RLS
+│   ├── 20260517050000_ai_context_fields.sql # Supabase Migration for Context memory
+│   ├── ai_logs_setup.sql            # Table structure for AI observabliity and usage logs
+│   ├── init_ai_schema.sql           # PostgreSQL Schema: 3-Layer Memory, Audit Logs, and RLS
+│   ├── fix_missing_columns.sql      # Schema migrations for missing columns
+│   ├── rpc_get_week_availability.sql # Postgres function for retrieving availability
+│   ├── seed_demo_account.sql        # Seed data for demo accounts
+│   └── cleanup_demo.sql             # Script to clean up demo data
 ├── hooks/
 │   ├── use-ai-chat.ts               # B2B Merchant Agent Logic ("Consultora Daily")
 │   └── use-consumer-ai-chat.ts      # B2C Consumer Agent Logic ("Delta")
 ├── supabase-edge-functions/
 │   ├── gemini-chat/                 # Secure Server-Side API Handshake & Token Management
 │   ├── daily-briefing/              # Autonomous Business Analytics Aggregator
-│   └── notify-booking/              # Real-Time Transactional Webhooks
+│   ├── notify-booking/              # Real-Time Transactional Webhooks
+│   └── gerar-texto-daily/           # Generates text content using Gemini
 └── ui-components/
-    ├── ai-chat.tsx                   # B2B Conversational Interface Core
-    └── consumer-ai-chat/            # B2C Frictionless Checkout & Booking Interface
+    ├── ai-chat.tsx                  # B2B Conversational Interface Core
+    └── consumer-ai-chat/
+        └── [id].tsx                 # B2C Frictionless Checkout & Booking Interface
 ```
 
 ---
 
 ## 🏛️ Ecosystem Overview: 8-Subagent Architecture
+
+> **Note**: This is a read-only architectural showcase, decoupled from the main application. Files under `lib/ai/` that reference `@/lib/supabase` assume the Supabase client configuration from the main Daily repository and are not intended to run standalone here.
 
 The AI ecosystem has evolved from a monolithic structure into a highly sophisticated **Subagent Architecture** (1 B2C Agent + 1 B2B Router orchestrating 8 Specialists). This drastically reduces token consumption, eliminates hallucination risks by isolating context, and provides specialized memory scopes.
 

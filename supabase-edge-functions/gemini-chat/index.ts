@@ -152,18 +152,19 @@ serve(async (req) => {
 
       lastData = await lastResponse.json();
 
-      // Se não for 429, sai do loop (sucesso não-stream ou erro definitivo)
-      if (lastResponse.status !== 429) break;
+      // Se for sucesso ou erro não retryable, sai do loop
+      // Retentamos em 429 (Rate Limit) e 503 (Service Unavailable / Overloaded)
+      if (lastResponse.status !== 429 && lastResponse.status !== 503) break;
 
-      console.warn(`[Gemini] 429 Rate Limited (tentativa ${attempt + 1})`);
+      console.warn(`[Gemini] ${lastResponse.status} Overloaded/Rate Limited (tentativa ${attempt + 1})`);
     }
 
     if (!lastResponse!.ok) {
       console.error('Gemini API error:', lastData);
 
-      // 429 do Gemini vira 503 para o client (distingue do nosso rate limit)
-      const clientStatus = lastResponse!.status === 429 ? 503 : lastResponse!.status;
-      const clientError = lastResponse!.status === 429
+      // 429 e 503 do Gemini viram 503 para o client
+      const clientStatus = (lastResponse!.status === 429 || lastResponse!.status === 503) ? 503 : lastResponse!.status;
+      const clientError = (lastResponse!.status === 429 || lastResponse!.status === 503)
         ? 'A IA está sobrecarregada no momento. Aguarde alguns segundos e tente novamente.'
         : 'Erro na comunicação com a IA.';
 

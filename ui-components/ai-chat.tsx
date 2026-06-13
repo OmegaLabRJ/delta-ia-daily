@@ -604,7 +604,7 @@ export default function AIChatScreen() {
           {/* Quick actions after a few messages */}
           {messages.length > 0 && messages.length < 6 && !isLoading && (
             <View style={{ marginTop: 8, marginBottom: 10 }}>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={Platform.OS === "web"} contentContainerStyle={{ gap: 8 }}>
                 {QUICK_ACTIONS.slice(0, 4).map((action) => (
                   <TouchableOpacity
                     key={action.label}
@@ -676,6 +676,8 @@ export default function AIChatScreen() {
               onSubmitEditing={handleSend}
               blurOnSubmit={false}
               editable={!isLoading}
+              returnKeyType="send"
+              enterKeyHint="send"
             />
           </View>
 
@@ -697,7 +699,7 @@ export default function AIChatScreen() {
               <ActivityIndicator size="small" color={colors.muted} />
             ) : (
               <IconSymbol
-                name="arrow.up"
+                name="paperplane.fill"
                 size={18}
                 color={input.trim() ? "#fff" : colors.muted}
               />

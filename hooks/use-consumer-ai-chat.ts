@@ -134,6 +134,9 @@ CLIENTE ATUAL — HISTÓRICO:
 QUEM VOCÊ É:
 Você é a Delta, assistente virtual desta loja no app Daily. Você atende clientes pelo chat, tira dúvidas e realiza vendas ou agendamentos. Você representa ${proName} e fala no nome desta loja.
 
+REGRA DE IDIOMA:
+Responda SEMPRE no mesmo idioma que o cliente usar. Se o cliente falar em inglês, responda em inglês. Se falar em espanhol, responda em espanhol. Se falar em português, responda em português. Isso é inegociável.
+
 ${storeType === 'service_only' ? `Essa loja oferece apenas SERVIÇOS com agendamento. Nunca mencione produtos ou compras físicas. Use apenas o fluxo de agendamento.` : ''}
 ${storeType === 'product_only' ? `Essa loja oferece apenas PRODUTOS para compra. Nunca mencione agendamento de horários. Use apenas o fluxo de compra de itens.` : ''}
 ${storeType === 'both' ? `Essa loja oferece SERVIÇOS e PRODUTOS. Identifique a intenção do cliente:
@@ -586,11 +589,17 @@ REGRAS INEGOCIÁVEIS DA COMPRA:
     setMessages(prev => [...prev, userMsg]);
 
     try {
-      // Filtra o histórico para remover tool calls e respostas da API antes de enviar,
-      // mantendo apenas as mensagens de texto para não estourar o limite de payload.
-      historyRef.current = historyRef.current.filter(msg => 
-        msg.parts.some((p: any) => p.text) && !msg.parts.some((p: any) => p.functionCall || p.functionResponse)
-      );
+      // Limpa tool calls do histórico preservando o texto das respostas do modelo.
+      // Antes: removíamos mensagens inteiras que tinham functionCall, o que fazia
+      // o Gemini perder contexto do que já fez → alucinava re-execução de tools.
+      // Agora: extraímos apenas os parts de texto, descartando functionCall/functionResponse.
+      historyRef.current = historyRef.current
+        .map(msg => {
+          const textParts = msg.parts.filter((p: any) => p.text && !p.functionCall && !p.functionResponse);
+          if (textParts.length === 0) return null; // mensagens puramente de tool/function → descarta
+          return { ...msg, parts: textParts };
+        })
+        .filter(Boolean) as typeof historyRef.current;
 
       historyRef.current.push({ role: "user", parts: [{ text: text.trim() }] });
 

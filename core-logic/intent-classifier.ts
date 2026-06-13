@@ -26,13 +26,38 @@ const INTENTS: IntentDefinition[] = [
   },
   {
     intent: "schedule_action",
-    patterns: [/quero agendar/i, /marcar\s+hor[aá]rio/i, /agendamento/i, /agenda\s+(um|uma|o|a|pra|para)/i, /bora\s+marcar(?!\s+hor)/i],
-    negations: [/não quero/i, /cancelar/i, /desmarcar/i, /posts/i, /como agendar/i, /onde\s+(fica|vejo)/i]
+    patterns: [/quero agendar/i, /marcar\s+hor[aá]rio/i, /agendamento/i, /agenda\s+(um|uma|o|a|pra|para)/i, /bora\s+marcar(?!\s+hor)/i, /cancelar?\s+agend/i, /desmarcar/i, /minha\s+agenda\s+de\s+hoje/i, /agenda\s+do\s+dia/i, /listar?\s+agend/i],
+    negations: [/não quero/i, /posts/i, /como agendar/i, /onde\s+(fica|vejo)/i]
   },
   {
-    intent: "price",
-    patterns: [/quanto\s+custa/i, /qual\s+[eo]\s+pre[cç]o/i, /valor\s+d[oa]/i, /tabela\s+de\s+pre[cç]/i],
-    negations: [/sugerir preço/i, /mercado/i, /como cobrar/i, /lucro/i, /aumentar/i] 
+    intent: "pricing_question",
+    patterns: [/quanto\s+(cobr|cust)/i, /qual\s+[eo]\s+pre[cç]o/i, /valor\s+d[oa]/i, /tabela\s+de\s+pre[cç]/i, /sugerir?\s+pre[cç]o/i, /precificar/i, /como\s+cobrar/i],
+    negations: [/faturamento/i, /receita/i, /ganhei/i]
+  },
+  {
+    intent: "content_request",
+    patterns: [/cria\s+(um\s+)?post/i, /legenda/i, /calend[aá]rio\s+de\s+(conte[uú]do|post)/i, /dica\s+de\s+post/i, /o\s+que\s+postar/i, /conte[uú]do\s+pra/i, /ideia\s+de\s+post/i, /criar?\s+conte[uú]do/i, /publica[cç][aã]o/i],
+    negations: [/cancelar/i, /agenda/i]
+  },
+  {
+    intent: "analytics_request",
+    patterns: [/m[eé]tricas/i, /visualiza[cç][oõ]es/i, /cliques/i, /desempenho/i, /como\s+t[aá]\s+(indo|meu)/i, /performance/i, /estat[ií]sticas/i, /quantas\s+pessoas/i, /an[aá]lise/i],
+    negations: [/faturamento/i, /receita/i, /ganhei/i]
+  },
+  {
+    intent: "client_management",
+    patterns: [/clientes?\s+(inativos?|sum)/i, /faz\s+tempo\s+que/i, /não\s+v(em|olta)/i, /follow.?up/i, /lembrete\s+de\s+retorno/i, /reten[cç][aã]o/i, /mandar\s+(um\s+)?lembrete/i],
+    negations: []
+  },
+  {
+    intent: "finance_question",
+    patterns: [/fatur(amento|ei|ar)/i, /receita/i, /ticket\s+m[eé]dio/i, /quanto\s+(ganhei|faturei|vou\s+ganhar)/i, /meta\s+de\s+faturamento/i, /quanto\s+t[oô]\s+ganhan/i],
+    negations: [/pre[cç]o/i, /cobrar/i]
+  },
+  {
+    intent: "greeting",
+    patterns: [/^(oi|ol[aá]|e\s*a[ií]|bom\s+dia|boa\s+(tarde|noite)|hey|hello|eai)/i],
+    negations: [/agendar/i, /post/i, /pre[cç]o/i, /m[eé]trica/i]
   },
   {
     intent: "faq_location",

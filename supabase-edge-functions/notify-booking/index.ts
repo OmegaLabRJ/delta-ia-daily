@@ -35,7 +35,7 @@ serve(async (req) => {
       )
     }
 
-    const { professional_id, consumer_name, service_name, date, time, consumer_phone } = await req.json()
+    const { professional_id, consumer_id, consumer_name, service_name, date, time, consumer_phone } = await req.json()
 
     // 1. Buscar token de Push do profissional
     const { data: profile } = await supabase
@@ -44,16 +44,41 @@ serve(async (req) => {
       .eq('id', professional_id)
       .single()
 
-    // 2. Enviar Notificação Push via Expo
+    // 2. Buscar token de Push do consumidor
+    let consumerProfile = null
+    if (consumer_id) {
+      const { data } = await supabase
+        .from('profiles')
+        .select('expo_push_token')
+        .eq('id', consumer_id)
+        .single()
+      consumerProfile = data
+    }
+
+    // 3. Montar e enviar Notificações Push via Expo
+    const pushMessages = []
+
     if (profile?.expo_push_token) {
-      const pushMessage = {
+      pushMessages.push({
         to: profile.expo_push_token,
         sound: 'default',
         title: 'Novo Agendamento! 🎉',
         body: `${consumer_name} agendou ${service_name} no dia ${date} às ${time}.`,
         data: { screen: 'notifications' },
-      }
+      })
+    }
 
+    if (consumerProfile?.expo_push_token) {
+      pushMessages.push({
+        to: consumerProfile.expo_push_token,
+        sound: 'default',
+        title: 'Agendamento Confirmado! ✅',
+        body: `Seu agendamento para ${service_name} com ${profile?.display_name || 'a loja'} no dia ${date} às ${time} está confirmado!`,
+        data: { screen: 'notifications' },
+      })
+    }
+
+    if (pushMessages.length > 0) {
       await fetch('https://exp.host/--/api/v2/push/send', {
         method: 'POST',
         headers: {
@@ -61,7 +86,7 @@ serve(async (req) => {
           'Accept-encoding': 'gzip, deflate',
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(pushMessage),
+        body: JSON.stringify(pushMessages),
       })
     }
 
