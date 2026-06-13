@@ -603,17 +603,10 @@ REGRAS INEGOCIÁVEIS DA COMPRA:
     setMessages(prev => [...prev, userMsg]);
 
     try {
-      // Limpa tool calls do histórico preservando o texto das respostas do modelo.
-      // Antes: removíamos mensagens inteiras que tinham functionCall, o que fazia
-      // o Gemini perder contexto do que já fez → alucinava re-execução de tools.
-      // Agora: extraímos apenas os parts de texto, descartando functionCall/functionResponse.
-      historyRef.current = historyRef.current
-        .map(msg => {
-          const textParts = msg.parts.filter((p: any) => p.text && !p.functionCall && !p.functionResponse);
-          if (textParts.length === 0) return null; // mensagens puramente de tool/function → descarta
-          return { ...msg, parts: textParts };
-        })
-        .filter(Boolean) as typeof historyRef.current;
+      // Removido o filtro que destruía functionCall e functionResponse.
+      // O modelo PRECISA dessas respostas no histórico para lembrar dos IDs dos serviços
+      // quando for executar o book_appointment nos turnos seguintes.
+      // Apenas garantimos que o histórico não exceda o limite.
 
       historyRef.current.push({ role: "user", parts: [{ text: text.trim() }] });
 
@@ -631,9 +624,14 @@ REGRAS INEGOCIÁVEIS DA COMPRA:
         }
       }
 
-      // Trim do histórico — mantido apenas para limitar tamanho total no token window
+      // Trim do histórico com segurança para não quebrar os pares de functionCall/functionResponse
       if (historyRef.current.length > MAX_HISTORY_ENTRIES) {
-        historyRef.current = historyRef.current.slice(-MAX_HISTORY_ENTRIES);
+        let sliced = historyRef.current.slice(-MAX_HISTORY_ENTRIES);
+        // Garante que o histórico não comece com um functionResponse sem o seu functionCall
+        while (sliced.length > 0 && sliced[0].parts.some((p: any) => p.functionResponse)) {
+          sliced.shift();
+        }
+        historyRef.current = sliced;
       }
 
       const thinkingId = `ai_${Date.now()}`;
