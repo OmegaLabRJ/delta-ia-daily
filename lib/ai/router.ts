@@ -158,7 +158,7 @@ Responda SOMENTE com o nome do agente:`;
 
 export class Router {
   private sessionManager: SessionManager;
-  private chatHistory: { role: string; content: string; agentUsed?: AgentType }[] = [];
+  private chatHistory: { role: "user" | "assistant"; content: string; agentUsed?: AgentType }[] = [];
 
   constructor() {
     this.sessionManager = new SessionManager();
