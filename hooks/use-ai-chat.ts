@@ -360,9 +360,17 @@ export function useAIChat(userId: string | undefined) {
         const aiMsgId = `ai_${Date.now()}`;
         setMessages((prev) => [...prev, { id: aiMsgId, role: "assistant", content: "...", timestamp: Date.now() }]);
 
-        const result = await routerRef.current.route(text.trim(), userId, (chunk) => {
-          setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, content: chunk } : m));
-        });
+        const result = await routerRef.current.route(
+          text.trim(),
+          userId,
+          (chunk) => {
+            setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, content: chunk } : m));
+          },
+          (status) => {
+            // Mostra o status em itálico como "Thinking Step"
+            setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, content: `_${status}_` } : m));
+          }
+        );
 
         console.log(`[Router] Agent: ${result.agentUsed}`);
 

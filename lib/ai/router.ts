@@ -172,13 +172,16 @@ export class Router {
     message: string,
     professionalId: string,
     onChunk?: (text: string) => void,
+    onStatus?: (status: string) => void,
   ): Promise<AgentResponse & { agentUsed: AgentType }> {
     const session = this.sessionManager.get();
 
+    onStatus?.("Verificando perfil...");
     // NOVO: atualizar isOnboarding a partir do perfil real
     const routerCtx = await buildRouterContext(professionalId, this.chatHistory, session);
     this.sessionManager.setOnboarding(routerCtx.session.isOnboarding);
 
+    onStatus?.("Analisando intenção...");
     // Classificar intenção
     const classification = await classify(message, this.sessionManager.get(), this.chatHistory);
     console.log(`[Router] → ${classification.agent} (confidence: ${classification.confidence}, method: ${classification.method})`);
@@ -186,9 +189,11 @@ export class Router {
     // Obter agente
     const agent = AGENT_REGISTRY[classification.agent];
 
+    onStatus?.("Reunindo informações...");
     // Construir contexto do agente
     const context = await agent.buildContext(professionalId);
 
+    onStatus?.("Processando...");
     // Executar agente (reseta o rate limit pois a classificação já gastou o tempo)
     resetRateLimit();
     const response = await agent.execute(
