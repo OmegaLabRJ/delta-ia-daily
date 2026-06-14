@@ -91,15 +91,17 @@ export async function callGeminiProxy(params: GeminiProxyParams, onChunk?: (text
                    if (dataStr.trim() === "[DONE]") continue;
                    try {
                      const data = JSON.parse(dataStr);
-                     const part = data?.candidates?.[0]?.content?.parts?.[0];
+                     const responseParts = data?.candidates?.[0]?.content?.parts || [];
                      
-                     if (part?.text) {
-                       fullText += part.text;
-                       onChunk(fullText);
-                     }
-                     
-                     if (part?.functionCall) {
-                       functionCall = part.functionCall;
+                     for (const part of responseParts) {
+                       if (part?.text) {
+                         fullText += part.text;
+                         onChunk(fullText);
+                       }
+                       
+                       if (part?.functionCall) {
+                         functionCall = part.functionCall;
+                       }
                      }
                    } catch (e) {}
                  }
