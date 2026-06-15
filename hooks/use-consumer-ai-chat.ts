@@ -32,7 +32,7 @@ export function useConsumerAIChat(professionalId: string, consumerId?: string) {
   const historyRef  = useRef<GeminiContent[]>([]);
   const loadedRef   = useRef(false);
 
-  const { getAvailableSlots, bookSlot } = useSchedule(professionalId);
+  const { bookSlot } = useSchedule(professionalId);
 
   // ── Inicialização do contexto ────────────────────────────────────────────────
   useEffect(() => {
@@ -683,7 +683,7 @@ REGRAS INEGOCIÁVEIS DA COMPRA:
     } finally {
       setIsLoading(false);
     }
-  }, [professionalId, consumerId, getAvailableSlots, bookSlot]);
+  }, [professionalId, consumerId, bookSlot]);
 
   return { messages, isLoading, sendMessage };
 }
