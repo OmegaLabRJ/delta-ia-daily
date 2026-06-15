@@ -26,7 +26,7 @@ const INTENTS: IntentDefinition[] = [
   },
   {
     intent: "schedule_action",
-    patterns: [/quero agendar/i, /marcar\s+hor[aá]rio/i, /agendamento/i, /agenda\s+(um|uma|o|a|pra|para)/i, /bora\s+marcar(?!\s+hor)/i, /cancelar?\s+agend/i, /desmarcar/i, /minha\s+agenda\s+de\s+hoje/i, /agenda\s+do\s+dia/i, /listar?\s+agend/i],
+    patterns: [/quero agendar/i, /marcar\s+hor[aá]rio/i, /agendamento/i, /agenda\s+(um|uma|o|a|pra|para)/i, /bora\s+marcar(?!\s+hor)/i, /cancelar?\s+agend/i, /desmarcar/i, /minha\s+agenda\s+de\s+hoje/i, /agenda\s+do\s+dia/i, /listar?\s+agend/i, /agendar/i, /marcar/i],
     negations: [/não quero/i, /posts/i, /como agendar/i, /onde\s+(fica|vejo)/i]
   },
   {

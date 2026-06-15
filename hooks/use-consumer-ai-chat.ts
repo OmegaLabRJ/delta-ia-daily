@@ -316,7 +316,6 @@ REGRAS INEGOCIÁVEIS DA COMPRA:
         {
           name: "get_week_availability",
           description: "Busca horários disponíveis dos próximos 7 dias para todos os serviços.",
-          parameters: { type: "object", properties: {} },
         },
         {
           name: "book_appointment",
@@ -340,7 +339,6 @@ REGRAS INEGOCIÁVEIS DA COMPRA:
         {
           name: "get_products",
           description: "Busca os produtos disponíveis na loja. Use quando o cliente demonstrar intenção de comprar um item.",
-          parameters: { type: "object", properties: {} },
         }
       );
     }
