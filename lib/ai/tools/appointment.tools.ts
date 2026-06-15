@@ -12,7 +12,12 @@ export async function executeCreateAppointment(professionalId: string, args: any
     return { success: false, error: "Você precisa cadastrar pelo menos um serviço na sua loja antes de agendar." };
   }
 
-  const matchedService = myServices.find(s => s.name.toLowerCase().includes(args.service_name.toLowerCase())) || myServices[0];
+  const serviceName = args.service_name || args.service || "";
+  const clientName = args.client_name || args.client || "Cliente Local";
+  const dateStr = args.date || new Date().toISOString().split("T")[0];
+  const timeStr = args.time || "12:00";
+
+  const matchedService = myServices.find(s => s.name.toLowerCase().includes(serviceName.toLowerCase())) || myServices[0];
 
   // Validação de conflito
   const serviceIds = myServices.map(s => s.id);
@@ -20,8 +25,8 @@ export async function executeCreateAppointment(professionalId: string, args: any
     .from("appointments" as any)
     .select("id")
     .in("service_id", serviceIds)
-    .eq("appointment_date", args.date)
-    .eq("appointment_time", args.time)
+    .eq("appointment_date", dateStr)
+    .eq("appointment_time", timeStr)
     .in("status", ["confirmed", "pending"]);
 
   if (overlapping && overlapping.length > 0) {
@@ -33,7 +38,7 @@ export async function executeCreateAppointment(professionalId: string, args: any
     .from("client_profiles" as any)
     .select("id")
     .eq("professional_id", professionalId)
-    .ilike("client_name", args.client_name)
+    .ilike("name", clientName)
     .maybeSingle();
 
   let clientProfileId: string | null = null;
@@ -42,7 +47,7 @@ export async function executeCreateAppointment(professionalId: string, args: any
   } else {
     const { data: newClient, error: clientErr } = await supabase
       .from("client_profiles" as any)
-      .insert({ professional_id: professionalId, client_name: args.client_name })
+      .insert({ professional_id: professionalId, name: clientName })
       .select("id")
       .single();
     if (!clientErr && newClient) {
@@ -56,9 +61,9 @@ export async function executeCreateAppointment(professionalId: string, args: any
       client_id: professionalId,
       client_profile_id: clientProfileId,
       service_id: matchedService.id,
-      appointment_date: args.date,
-      appointment_time: args.time,
-      notes: `[cliente:${args.client_name}] Agendado via IA. Serviço: ${args.service_name}`,
+      appointment_date: dateStr,
+      appointment_time: timeStr,
+      notes: `[cliente:${clientName}] Agendado via IA. Serviço: ${matchedService.name}`,
       status: "confirmed",
     })
     .select()
@@ -74,10 +79,10 @@ export async function executeCreateAppointment(professionalId: string, args: any
     message: "Agendamento criado com sucesso.",
     appointment: {
       id: data.id,
-      client_name: args.client_name,
+      client_name: clientName,
       service: matchedService.name,
-      date: args.date,
-      time: args.time,
+      date: dateStr,
+      time: timeStr,
     },
   };
 }

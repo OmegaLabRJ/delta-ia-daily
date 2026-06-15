@@ -4,7 +4,8 @@ import { AGENDA_PROMPT, AGENDA_TOOLS } from "../prompts/agenda.prompt";
 import { executeAgent } from "./base.agent";
 import { executeCreateAppointment, executeCancelAppointment, executeListTodayAppointments } from "../tools/appointment.tools";
 
-function contextToString(ctx: AgendaContextData): string {
+function contextToString(rawCtx: any): string {
+  const ctx = rawCtx as AgendaContextData;
   const servicesStr = ctx.services.length > 0
     ? ctx.services.map(s => `  • ${s.name} (R$${s.price}) — ${s.duration_minutes}min [ID: ${s.id}]`).join("\n")
     : "Nenhum serviço cadastrado.";
@@ -20,7 +21,7 @@ ${servicesStr}
 AGENDA (próximos dias):
 ${apptsStr}
 
-HOJE: ${new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" })}`;
+HOJE: ${new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}`;
 }
 
 async function toolExecutor(name: string, args: any, professionalId: string) {
