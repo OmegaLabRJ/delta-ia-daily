@@ -416,24 +416,28 @@ export default function AIChatScreen() {
 
       // FASE 2A: Quick Actions 100% Nativas
       if (action.label === "Sugerir preço") {
-        Alert.prompt(
-          "Calculadora de Preço",
-          "Qual serviço você quer precificar? (ex: Manicure, Corte)",
-          [
-            { text: "Cancelar", style: "cancel" },
-            {
-              text: "Calcular",
-              onPress: async (service_name?: string) => {
-                if (!service_name) return;
-                const { executeSuggestPrice } = await import('@/lib/ai/tools/pricing.tools');
-                const result = await executeSuggestPrice({ service_name, region_type: "popular" }); // Default region for now
-                if (result.success) {
-                   addLocalMessage(`Aqui está uma estimativa para **${service_name}**:\n\n💰 **Preço sugerido:** R$ ${result.suggested_price}\n📊 **Faixa:** ${result.range}\n\n${result.justification}`, result);
-                }
-              }
-            }
-          ]
-        );
+        const handlePricing = async (service_name?: string | null) => {
+          if (!service_name) return;
+          const { executeSuggestPrice } = await import('@/lib/ai/tools/pricing.tools');
+          const result = await executeSuggestPrice({ service_name, region_type: "popular" }); // Default region for now
+          if (result.success) {
+             addLocalMessage(`Aqui está uma estimativa para **${service_name}**:\n\n💰 **Preço sugerido:** R$ ${result.suggested_price}\n📊 **Faixa:** ${result.range}\n\n${result.justification}`, result);
+          }
+        };
+
+        if (Platform.OS === "web") {
+          const svc = window.prompt("Calculadora de Preço\n\nQual serviço você quer precificar? (ex: Manicure, Corte)");
+          handlePricing(svc);
+        } else {
+          Alert.prompt(
+            "Calculadora de Preço",
+            "Qual serviço você quer precificar? (ex: Manicure, Corte)",
+            [
+              { text: "Cancelar", style: "cancel" },
+              { text: "Calcular", onPress: handlePricing }
+            ]
+          );
+        }
         return;
       }
 
