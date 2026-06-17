@@ -543,6 +543,7 @@ REGRAS INEGOCIÁVEIS DA COMPRA:
             await supabase.from("client_profiles" as any).insert({
               client_id: consumerId,
               professional_id: professionalId,
+              client_name: (await supabase.from("profiles").select("display_name").eq("id", consumerId).single()).data?.display_name || "Cliente",
               preferences: call.args.preference,
               visit_count: 0,
             });

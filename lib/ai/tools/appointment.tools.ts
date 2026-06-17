@@ -38,7 +38,7 @@ export async function executeCreateAppointment(professionalId: string, args: any
     .from("client_profiles" as any)
     .select("id")
     .eq("professional_id", professionalId)
-    .ilike("name", clientName)
+    .ilike("client_name", clientName)
     .maybeSingle();
 
   let clientProfileId: string | null = null;
@@ -47,7 +47,7 @@ export async function executeCreateAppointment(professionalId: string, args: any
   } else {
     const { data: newClient, error: clientErr } = await supabase
       .from("client_profiles" as any)
-      .insert({ professional_id: professionalId, name: clientName })
+      .insert({ professional_id: professionalId, client_name: clientName })
       .select("id")
       .single();
     if (!clientErr && newClient) {
