@@ -60,12 +60,15 @@ export async function callGeminiProxy(params: GeminiProxyParams, onChunk?: (text
       let response: any;
 
       if (onChunk) {
-        // Raw fetch to support Streaming
+        // Raw fetch to support Streaming, using actual user session token
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token || SUPABASE_ANON_KEY;
+
         const fetchRes = await fetch(`${SUPABASE_URL}/functions/v1/gemini-chat`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
+            "Authorization": `Bearer ${token}`
           },
           body: JSON.stringify({ ...params, stream: true })
         });
