@@ -40,7 +40,7 @@ async function buildContextForGemini(userId: string): Promise<string> {
     // Fetch shop items
     const { data: items } = await supabase
       .from("marketplace_items" as any)
-      .select("name, price, item_type, views_count, whatsapp_clicks, duration_minutes")
+      .select("id, name, price, item_type, views_count, whatsapp_clicks, duration_minutes")
       .eq("seller_id", userId)
       .eq("is_active", true);
 
@@ -49,16 +49,22 @@ async function buildContextForGemini(userId: string): Promise<string> {
 
     // Fetch upcoming appointments
     const dateStr = new Date().toISOString().split("T")[0];
-    const { data: appts } = await supabase
-      .from("appointments" as any)
-      .select("appointment_date, appointment_time, client_id")
-      .eq("status", "confirmed")
-      .gte("appointment_date", dateStr)
-      .order("appointment_date", { ascending: true })
-      .order("appointment_time", { ascending: true })
-      .limit(10);
-      
-    const upcomingAppts = appts || [];
+    const serviceIds = shopItems.map((i: any) => i.id);
+    let upcomingAppts: any[] = [];
+
+    if (serviceIds.length > 0) {
+      const { data: appts } = await supabase
+        .from("appointments" as any)
+        .select("appointment_date, appointment_time, client_id")
+        .in("service_id", serviceIds)
+        .eq("status", "confirmed")
+        .gte("appointment_date", dateStr)
+        .order("appointment_date", { ascending: true })
+        .order("appointment_time", { ascending: true })
+        .limit(10);
+        
+      upcomingAppts = appts || [];
+    }
 
     const now = new Date();
 
@@ -93,6 +99,11 @@ ESPECIALIDADE: ${p.specialty || "Não definida"}
 BIO: ${p.bio || "Sem bio"}
 LOCALIZAÇÃO: ${p.location || "Não informada"}
 HORÁRIO DE ATENDIMENTO: ${p.business_hours || "Não definido"}
+PÚBLICO-ALVO: ${p.target_audience || "Não definido"}
+EXPERIÊNCIA: ${p.years_experience ? `${p.years_experience} anos` : "Não informado"}
+DIFERENCIAIS: ${p.differentials || "Não informados"}
+ATENDE A DOMICÍLIO: ${p.accepts_home_service === true ? "Sim" : "Não informado"}
+FORMAS DE PAGAMENTO: ${p.payment_methods || "Não informadas"}
 WHATSAPP: ${p.whatsapp ? "Configurado" : "NÃO CONFIGURADO — URGENTE, sugira ao profissional configurar!"}
 INSTAGRAM/SITE: ${p.website || "Não configurado"}
 SEGUIDORES: ${p.followers_count || 0}
