@@ -9,7 +9,7 @@ interface AgentExecutorConfig {
   systemPrompt: string;
   tools: any[];
   toolExecutor: (name: string, args: any, professionalId: string) => Promise<any>;
-  contextToString: (context: Record<string, any>) => string;
+  contextToString: (context: any) => string;
 }
 
 export async function executeAgent(
@@ -45,7 +45,7 @@ export async function executeAgent(
     contents: geminiHistory,
     tools: config.tools.length > 0 ? config.tools : undefined,
     generationConfig: { temperature: 0.68, maxOutputTokens: 2048 },
-  });
+  }, onChunk);
 
   let parts = data?.candidates?.[0]?.content?.parts || [];
   let actionResult: any = null;

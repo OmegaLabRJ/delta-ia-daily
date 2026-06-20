@@ -38,135 +38,136 @@ export async function callGeminiProxy(params: GeminiProxyParams, onChunk?: (text
   }
   lastCallTime = now;
 
-  // Timeout maior para acomodar retries no servidor (backoff de até ~7s)
   const TIMEOUT_MS = 45000;
-  const CLIENT_RETRIES = 2; // Retries no client para 503
+  const CLIENT_RETRIES = 1; // 1 retry no client por provedor
 
-  for (let attempt = 0; attempt <= CLIENT_RETRIES; attempt++) {
-    if (attempt > 0) {
-      // Backoff: 3s, 6s
-      const delay = attempt * 3000 + Math.random() * 1000;
-      console.log(`[AI] Client retry ${attempt}/${CLIENT_RETRIES} após ${Math.round(delay)}ms`);
-      await new Promise(r => setTimeout(r, delay));
-      // Reset rate limit para retry
-      lastCallTime = 0;
-    }
+  // Tenta Groq primeiro, se der erro (503, 429, timeout), cai pro Gemini
+  const providers = ["groq-chat", "gemini-chat"];
 
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error("TIMEOUT")), TIMEOUT_MS);
-    });
+  for (const provider of providers) {
+    for (let attempt = 0; attempt <= CLIENT_RETRIES; attempt++) {
+      if (attempt > 0) {
+        const delay = attempt * 3000 + Math.random() * 1000;
+        console.log(`[AI] Client retry ${attempt}/${CLIENT_RETRIES} no ${provider} após ${Math.round(delay)}ms`);
+        await new Promise(r => setTimeout(r, delay));
+        lastCallTime = 0;
+      }
 
-    try {
-      let response: any;
+      let timeoutId: any;
+      const timeoutPromise = new Promise((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error("TIMEOUT")), TIMEOUT_MS);
+      });
 
-      if (onChunk) {
-        // Raw fetch to support Streaming, using actual user session token
-        const { data: { session } } = await supabase.auth.getSession();
-        const token = session?.access_token || SUPABASE_ANON_KEY;
+      try {
+        let response: any;
 
-        const fetchRes = await fetch(`${SUPABASE_URL}/functions/v1/gemini-chat`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`
-          },
-          body: JSON.stringify({ ...params, stream: true })
-        });
-        
-        if (!fetchRes.ok) {
-           response = { error: { status: fetchRes.status, message: await fetchRes.text() } };
-        } else {
-           const reader = fetchRes.body?.getReader();
-           const decoder = new TextDecoder("utf-8");
-           let fullText = "";
-           let functionCall: any = null;
-           
-           if (reader) {
-             while (true) {
-               const { done, value } = await reader.read();
-               if (done) break;
-               
-               const chunk = decoder.decode(value, { stream: true });
-               const lines = chunk.split("\n");
-               for (const line of lines) {
-                 if (line.startsWith("data: ")) {
-                   const dataStr = line.slice(6);
-                   if (dataStr.trim() === "[DONE]") continue;
-                   try {
-                     const data = JSON.parse(dataStr);
-                     const responseParts = data?.candidates?.[0]?.content?.parts || [];
-                     
-                     for (const part of responseParts) {
-                       if (part?.text) {
-                         fullText += part.text;
-                         onChunk(fullText);
-                       }
+        if (onChunk) {
+          const { data: { session } } = await supabase.auth.getSession();
+          const token = session?.access_token || SUPABASE_ANON_KEY;
+
+          console.log(`[AI] Chamando Edge Function: ${provider}...`);
+
+          const fetchRes = await fetch(`${SUPABASE_URL}/functions/v1/${provider}`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`
+            },
+            body: JSON.stringify({ ...params, stream: true })
+          });
+          
+          if (!fetchRes.ok) {
+             response = { error: { status: fetchRes.status, message: await fetchRes.text() } };
+          } else {
+             const reader = fetchRes.body?.getReader();
+             const decoder = new TextDecoder("utf-8");
+             let fullText = "";
+             let functionCall: any = null;
+             
+             if (reader) {
+               while (true) {
+                 const { done, value } = await reader.read();
+                 if (done) break;
+                 
+                 const chunk = decoder.decode(value, { stream: true });
+                 const lines = chunk.split("\n");
+                 for (const line of lines) {
+                   if (line.startsWith("data: ")) {
+                     const dataStr = line.slice(6);
+                     if (dataStr.trim() === "[DONE]") continue;
+                     try {
+                       const data = JSON.parse(dataStr);
+                       const responseParts = data?.candidates?.[0]?.content?.parts || [];
                        
-                       if (part?.functionCall) {
-                         functionCall = part.functionCall;
+                       for (const part of responseParts) {
+                         if (part?.text) {
+                           fullText += part.text;
+                           onChunk(fullText);
+                         }
+                         
+                         if (part?.functionCall) {
+                           functionCall = part.functionCall;
+                         }
                        }
-                     }
-                   } catch (e) {}
+                     } catch (e) {}
+                   }
                  }
                }
              }
-           }
-           
-           const parts: any[] = [];
-           if (fullText) parts.push({ text: fullText });
-           if (functionCall) parts.push({ functionCall });
-           
-           return { candidates: [{ content: { parts } }] };
-        }
-      } else {
-        response = await Promise.race([
-          supabase.functions.invoke("gemini-chat", { body: params }),
-          timeoutPromise
-        ]);
-      }
-
-      if (response.error) {
-        const status = response.error?.status || response.error?.context?.status;
-        const errorBody = typeof response.error?.message === 'string'
-          ? response.error.message
-          : JSON.stringify(response.error);
-
-        console.error(`[AI] Edge Function error (status ${status}):`, errorBody);
-
-        // 429 = nosso rate limit → não retry, esperar
-        if (status === 429) {
-          throw new Error("RATE_LIMIT");
+             
+             const parts: any[] = [];
+             if (fullText) parts.push({ text: fullText });
+             if (functionCall) parts.push({ functionCall });
+             
+             return { candidates: [{ content: { parts } }] };
+          }
+        } else {
+          response = await Promise.race([
+            supabase.functions.invoke(provider, { body: params }),
+            timeoutPromise
+          ]);
         }
 
-        // 503 = Gemini sobrecarregado → retry no client
-        if (status === 503 && attempt < CLIENT_RETRIES) {
-          console.warn(`[AI] Gemini sobrecarregado, tentando novamente...`);
+        if (response.error) {
+          const status = response.error?.status || response.error?.context?.status;
+          const errorBody = typeof response.error?.message === 'string'
+            ? response.error.message
+            : JSON.stringify(response.error);
+
+          console.error(`[AI] Edge Function ${provider} error (status ${status}):`, errorBody);
+
+          // Erro de autenticação não faz sentido tentar em outro provedor (é erro do user)
+          if (status === 401) {
+            throw new Error("AUTH_EXPIRED");
+          }
+
+          // Se for 429 ou 503, podemos tentar retry no mesmo provedor
+          if ((status === 429 || status === 503) && attempt < CLIENT_RETRIES) {
+            console.warn(`[AI] ${provider} sobrecarregado, tentando novamente...`);
+            continue;
+          }
+
+          // Se falhou todos os retries ou foi outro erro (500), dá 'break' pra ir pro próximo provedor
+          break;
+        }
+
+        // Sucesso!
+        return response.data;
+      } catch (e: any) {
+        if (["AUTH_EXPIRED"].includes(e.message)) {
+          throw e; // não tenta fallback
+        }
+
+        if (attempt < CLIENT_RETRIES && e.message !== "TIMEOUT") {
+          console.warn(`[AI] Erro de rede no ${provider}, tentando novamente...`);
           continue;
         }
 
-        // 401 = auth expirada
-        if (status === 401) {
-          throw new Error("AUTH_EXPIRED");
-        }
-
-        throw new Error("SERVER_ERROR");
+        // Falhou, vai pro próximo provider
+        break; 
+      } finally {
+        if (timeoutId) clearTimeout(timeoutId);
       }
-
-      return response.data;
-    } catch (e: any) {
-      // Re-throw erros específicos
-      if (["RATE_LIMIT", "AUTH_EXPIRED", "SERVER_ERROR", "TIMEOUT"].includes(e.message)) {
-        throw e;
-      }
-
-      // 503 de rede → retry
-      if (attempt < CLIENT_RETRIES) {
-        console.warn(`[AI] Erro de rede, tentando novamente...`);
-        continue;
-      }
-
-      console.error("[AI] Erro final:", e);
-      throw new Error("NETWORK_ERROR");
     }
   }
 

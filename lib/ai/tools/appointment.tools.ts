@@ -1,5 +1,44 @@
 import { supabase } from "@/lib/supabase";
 
+function parseDefensiveDate(rawDate: string): string {
+  if (!rawDate) return new Date().toISOString().split("T")[0];
+  let d = rawDate.toLowerCase().trim();
+  const today = new Date();
+  
+  if (d.includes("hoje") || d === "today") return today.toISOString().split("T")[0];
+  if (d.includes("amanhã") || d.includes("amanha") || d === "tomorrow") {
+    today.setDate(today.getDate() + 1);
+    return today.toISOString().split("T")[0];
+  }
+  
+  if (d.length <= 2 && !isNaN(parseInt(d, 10))) {
+    return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${d.padStart(2, "0")}`;
+  }
+  
+  if (d.includes("/")) {
+    const parts = d.split("/");
+    if (parts.length === 3 && parts[0].length <= 2) {
+      return `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
+    } else if (parts.length === 2) {
+      return `${today.getFullYear()}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
+    }
+  }
+
+  const isoMatch = d.match(/\d{4}-\d{2}-\d{2}/);
+  if (isoMatch) return isoMatch[0];
+
+  return rawDate;
+}
+
+function parseDefensiveTime(rawTime: string): string {
+  let t = String(rawTime || "12:00").toLowerCase().replace(/horas|hora|hs|h/g, "").trim();
+  if (t.length <= 2 && !isNaN(parseInt(t, 10))) {
+    return `${t.padStart(2, "0")}:00`;
+  }
+  if (t.length >= 5) return t.substring(0, 5);
+  return t;
+}
+
 export async function executeCreateAppointment(professionalId: string, args: any) {
   const { data: myServices } = await supabase
     .from("marketplace_items" as any)
@@ -14,8 +53,8 @@ export async function executeCreateAppointment(professionalId: string, args: any
 
   const serviceName = args.service_name || args.service || "";
   const clientName = args.client_name || args.client || "Cliente Local";
-  const dateStr = args.date || new Date().toISOString().split("T")[0];
-  const timeStr = args.time || "12:00";
+  const dateStr = parseDefensiveDate(args.date);
+  const timeStr = parseDefensiveTime(args.time);
 
   const matchedService = myServices.find((s: any) => s.name.toLowerCase().includes(serviceName.toLowerCase())) || myServices[0];
 
@@ -120,7 +159,7 @@ export async function executeCancelAppointment(professionalId: string, args: any
 }
 
 export async function executeListTodayAppointments(professionalId: string, args: any) {
-  const date = args.date || new Date().toISOString().split("T")[0];
+  const date = parseDefensiveDate(args.date);
 
   const { data: services } = await supabase
     .from("marketplace_items" as any)

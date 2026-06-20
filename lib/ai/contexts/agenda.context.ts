@@ -2,7 +2,7 @@ import { supabase } from "@/lib/supabase";
 import type { AgendaContextData } from "../types";
 
 export async function buildAgendaContext(professionalId: string): Promise<AgendaContextData> {
-  const [profileRes, servicesRes, appointmentsRes, scheduleRes] = await Promise.all([
+  const [profileRes, servicesRes, scheduleRes] = await Promise.all([
     supabase.from("profiles").select("display_name, business_name").eq("id", professionalId).single(),
     supabase
       .from("marketplace_items" as any)
@@ -10,14 +10,6 @@ export async function buildAgendaContext(professionalId: string): Promise<Agenda
       .eq("seller_id", professionalId)
       .eq("is_active", true)
       .eq("item_type", "service"),
-    supabase
-      .from("appointments" as any)
-      .select("id, appointment_date, appointment_time, status, notes, service_id")
-      .gte("appointment_date", new Date().toISOString().split("T")[0])
-      .in("status", ["confirmed", "pending"])
-      .order("appointment_date", { ascending: true })
-      .order("appointment_time", { ascending: true })
-      .limit(20),
     supabase
       .from("schedules" as any)
       .select("day_of_week, start_time, end_time, slot_duration_min, break_between_min, auto_approve")
@@ -27,7 +19,21 @@ export async function buildAgendaContext(professionalId: string): Promise<Agenda
 
   const profile = profileRes.data as any;
   const services = (servicesRes.data || []) as any[];
-  const appointments = (appointmentsRes.data || []) as any[];
+  const serviceIds = services.map(s => s.id);
+
+  let appointments: any[] = [];
+  if (serviceIds.length > 0) {
+    const appointmentsRes = await supabase
+      .from("appointments" as any)
+      .select("id, appointment_date, appointment_time, status, notes, service_id")
+      .in("service_id", serviceIds)
+      .gte("appointment_date", new Date().toISOString().split("T")[0])
+      .in("status", ["confirmed", "pending"])
+      .order("appointment_date", { ascending: true })
+      .order("appointment_time", { ascending: true })
+      .limit(20);
+    appointments = (appointmentsRes.data || []) as any[];
+  }
 
   // Extrair client_name do campo notes (pattern [cliente:X])
   const parseClientName = (notes: string | null): string => {
