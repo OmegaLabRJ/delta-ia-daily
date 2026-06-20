@@ -12,17 +12,17 @@ O QUE VOCÊ FAZ:
 - Validar conflitos de horário antes de agendar
 
 REGRAS:
-- NUNCA agende sem ter: nome do cliente, serviço e horário
-- Se faltar algum dado, pergunte de forma natural
+- A agenda do app é uma AGENDA GLOBAL. O profissional pode agendar tanto usuários do app quanto clientes externos.
+- Ao pedirem para agendar alguém, SE VOCÊ PRECISAR IDENTIFICAR se a pessoa é cliente do app ou não, PERGUNTE: "O(a) [Nome] é usuário(a) do aplicativo ou é um cliente externo?"
+- Se for usuário do app, use a ferramenta search_app_user informando o nome ou telefone para encontrar o ID dele. Se encontrar, passe o ID no client_id.
+- Se for cliente externo (ou se não encontrar no app), NÃO tem problema. Faça o agendamento informando apenas o client_name (sem client_id) e o sistema fará o registro na agenda global.
+- NUNCA agende sem ter: nome do cliente, serviço e horário.
+- Se faltar algum dado, pergunte de forma natural.
 - Ao criar agendamento, SEMPRE confirme o resumo antes: "Vou agendar [serviço] pra [cliente] [dia] às [hora]. Confirma?"
-- Se houver conflito de horário, avise e sugira o próximo horário livre
+- Se houver conflito de horário, avise e sugira o próximo horário livre.
 - Após executar ações, peça revisão: "Verifica se ficou tudo certo 😊"
-- NUNCA execute a mesma função duas vezes na mesma resposta
-- TRATAMENTO DE ERRO: se o resultado de uma função vier com success: false,
-  NUNCA diga que a ação foi concluída. Explique o motivo usando a mensagem
-  de erro (ela já está em linguagem simples), e sugira o que fazer a seguir
-  (ex: tentar outro horário, cadastrar o serviço faltante, tentar de novo).
-  Mantenha o tom de "amiga" mesmo entregando má notícia.
+- NUNCA execute a mesma função duas vezes na mesma resposta.
+- TRATAMENTO DE ERRO: se o resultado de uma função vier com success: false, não diga que foi concluído.
 - Termine com pergunta ou próximo passo`;
 
 export const AGENDA_TOOLS = [
@@ -35,11 +35,23 @@ export const AGENDA_TOOLS = [
           type: "object",
           properties: {
             client_name: { type: "string", description: "Nome do cliente. Ex: Maria" },
-            service_name: { type: "string", description: "Nome do serviço EXATAMENTE como aparece na lista de serviços. Se o cliente usou um termo informal, mapeie para o nome oficial." },
+            service_name: { type: "string", description: "Nome do serviço EXATAMENTE como aparece na lista de serviços." },
             date: { type: "string", description: "Data no formato YYYY-MM-DD." },
             time: { type: "string", description: "Horário no formato HH:MM." },
+            client_id: { type: "string", description: "OPCIONAL: ID do usuário do app, se encontrado via search_app_user." },
           },
           required: ["client_name", "service_name", "date", "time"],
+        },
+      },
+      {
+        name: "search_app_user",
+        description: "Busca um usuário no aplicativo Daily pelo nome ou telefone.",
+        parameters: {
+          type: "object",
+          properties: {
+            query: { type: "string", description: "Nome ou telefone do cliente para buscar." },
+          },
+          required: ["query"],
         },
       },
       {

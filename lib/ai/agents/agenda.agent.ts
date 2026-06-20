@@ -2,7 +2,7 @@ import type { BaseAgent, AgendaContextData, SessionContext, AgentResponse } from
 import { buildAgendaContext } from "../contexts/agenda.context";
 import { AGENDA_PROMPT, AGENDA_TOOLS } from "../prompts/agenda.prompt";
 import { executeAgent } from "./base.agent";
-import { executeCreateAppointment, executeCancelAppointment, executeListTodayAppointments } from "../tools/appointment.tools";
+import { executeCreateAppointment, executeCancelAppointment, executeListTodayAppointments, executeSearchAppUser } from "../tools/appointment.tools";
 
 function contextToString(rawCtx: any): string {
   const ctx = rawCtx as AgendaContextData;
@@ -29,6 +29,7 @@ async function toolExecutor(name: string, args: any, professionalId: string) {
     case "create_appointment": return executeCreateAppointment(professionalId, args);
     case "cancel_appointment": return executeCancelAppointment(professionalId, args);
     case "list_today_appointments": return executeListTodayAppointments(professionalId, args);
+    case "search_app_user": return executeSearchAppUser(professionalId, args);
     default: return { error: `Tool ${name} não encontrada.` };
   }
 }

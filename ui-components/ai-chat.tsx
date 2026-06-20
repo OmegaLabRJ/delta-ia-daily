@@ -45,14 +45,13 @@ const QUICK_ACTIONS = [
 // ─── Appointment Action Card ──────────────────────────────────────────────────
 function AppointmentActionCard({ appointment, professionalId, colors }: { appointment: any, professionalId: string, colors: any }) {
   const [isHighlighted, setIsHighlighted] = useState(true);
-  const [status, setStatus] = useState<'active' | 'cancelled'>('active');
+  const [status, setStatus] = useState<'active' | 'cancelled' | 'confirmed'>('active');
   const [hasTrackedAccepted, setHasTrackedAccepted] = useState(false);
 
   useEffect(() => {
     // Degradação visual após 10 segundos + tracking silencioso de 'accepted'
     const timer = setTimeout(() => {
       setIsHighlighted(false);
-      // Se o usuário não cancelou nem editou em 10s, registra como 'accepted'
       if (status === 'active' && !hasTrackedAccepted) {
         setHasTrackedAccepted(true);
         trackAIFeedback(professionalId, 'create_appointment', 'accepted').catch(() => {});
@@ -71,24 +70,9 @@ function AppointmentActionCard({ appointment, professionalId, colors }: { appoin
     }
   };
 
-  const handleEdit = async () => {
-    Alert.alert(
-      "Remarcar agendamento",
-      `Deseja remarcar o horário de ${appointment.client_name}?\n\nO agendamento atual será liberado e você pode pedir à Consultora para reagendar.`,
-      [
-        { text: "Manter", style: "cancel" },
-        {
-          text: "Remarcar",
-          onPress: async () => {
-            await trackAIFeedback(professionalId, 'create_appointment', 'edited');
-            if (appointment.id) {
-              await supabase.from('appointments').delete().eq('id', appointment.id);
-            }
-            setStatus('cancelled');
-          }
-        }
-      ]
-    );
+  const handleConfirm = async () => {
+    setStatus('confirmed');
+    await trackAIFeedback(professionalId, 'create_appointment', 'accepted');
   };
 
   if (status === 'cancelled') {
@@ -97,6 +81,11 @@ function AppointmentActionCard({ appointment, professionalId, colors }: { appoin
         <Text style={{ color: colors.muted, textDecorationLine: 'line-through' }}>Agendamento de {appointment.client_name} cancelado.</Text>
       </View>
     );
+  }
+
+  // Se confirmado, esconde o modal de acordo com a preferência do usuário
+  if (status === 'confirmed') {
+    return null;
   }
 
   if (!isHighlighted) {
@@ -109,8 +98,8 @@ function AppointmentActionCard({ appointment, professionalId, colors }: { appoin
           <TouchableOpacity onPress={handleCancel} style={{ flex: 1, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, paddingVertical: 6, borderRadius: 8, alignItems: "center" }}>
             <Text style={{ color: colors.foreground, fontWeight: "700", fontSize: 12 }}>Cancelar</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={handleEdit} style={{ flex: 1, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, paddingVertical: 6, borderRadius: 8, alignItems: "center" }}>
-            <Text style={{ color: colors.foreground, fontWeight: "700", fontSize: 12 }}>Editar</Text>
+          <TouchableOpacity onPress={handleConfirm} style={{ flex: 1, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, paddingVertical: 6, borderRadius: 8, alignItems: "center" }}>
+            <Text style={{ color: colors.foreground, fontWeight: "700", fontSize: 12 }}>Confirmar</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -121,8 +110,8 @@ function AppointmentActionCard({ appointment, professionalId, colors }: { appoin
     <View style={{ marginTop: 8, width: "100%", borderRadius: 16, overflow: "hidden", borderWidth: 1, borderColor: "#22c55e", backgroundColor: "rgba(34, 197, 94, 0.1)" }}>
       <View style={{ padding: 16 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
-          <Text style={{ fontSize: 20 }}>✅</Text>
-          <Text style={{ fontWeight: "900", color: "#16a34a", fontSize: 16, letterSpacing: 0.5 }}>AGENDADO AGORA</Text>
+          <Text style={{ fontSize: 20 }}>❓</Text>
+          <Text style={{ fontWeight: "900", color: "#16a34a", fontSize: 16, letterSpacing: 0.5 }}>SUGESTÃO DE AGENDAMENTO</Text>
         </View>
         
         <View style={{ backgroundColor: colors.surface, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: "rgba(34, 197, 94, 0.2)" }}>
@@ -138,13 +127,13 @@ function AppointmentActionCard({ appointment, professionalId, colors }: { appoin
           <TouchableOpacity onPress={handleCancel} style={{ flex: 1, backgroundColor: colors.surface, borderWidth: 1, borderColor: "#ef4444", paddingVertical: 10, borderRadius: 12, alignItems: "center" }}>
             <Text style={{ color: "#ef4444", fontWeight: "800", fontSize: 14 }}>❌ Cancelar</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={handleEdit} style={{ flex: 1, backgroundColor: "#22c55e", paddingVertical: 10, borderRadius: 12, alignItems: "center", shadowColor: "#22c55e", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 3, elevation: 4 }}>
-            <Text style={{ color: "#fff", fontWeight: "800", fontSize: 14 }}>✏️ Editar</Text>
+          <TouchableOpacity onPress={handleConfirm} style={{ flex: 1, backgroundColor: "#22c55e", paddingVertical: 10, borderRadius: 12, alignItems: "center", shadowColor: "#22c55e", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 3, elevation: 4 }}>
+            <Text style={{ color: "#fff", fontWeight: "800", fontSize: 14 }}>✅ Confirmar</Text>
           </TouchableOpacity>
         </View>
 
         <Text style={{ textAlign: "center", color: colors.muted, fontSize: 11, marginTop: 12, fontStyle: "italic" }}>
-          "A IA acabou de agir. Se precisar, você pode editar ou cancelar acima."
+          A IA sugere este agendamento. Clique em confirmar para salvar ou cancelar para descartar.
         </Text>
       </View>
     </View>

@@ -17,10 +17,10 @@ export async function executeCreateAppointment(professionalId: string, args: any
   const dateStr = args.date || new Date().toISOString().split("T")[0];
   const timeStr = args.time || "12:00";
 
-  const matchedService = myServices.find(s => s.name.toLowerCase().includes(serviceName.toLowerCase())) || myServices[0];
+  const matchedService = myServices.find((s: any) => s.name.toLowerCase().includes(serviceName.toLowerCase())) || myServices[0];
 
   // Validação de conflito
-  const serviceIds = myServices.map(s => s.id);
+  const serviceIds = myServices.map((s: any) => s.id);
   const { data: overlapping } = await supabase
     .from("appointments" as any)
     .select("id")
@@ -30,7 +30,7 @@ export async function executeCreateAppointment(professionalId: string, args: any
     .in("status", ["confirmed", "pending"]);
 
   if (overlapping && overlapping.length > 0) {
-    return { success: false, error: "⚠️ Já existe um agendamento para este horário. Peça outro horário." };
+    return { success: false, error: "Oops! Já existe um agendamento para este horário. Peça outro horário." };
   }
 
   // NOVO: find-or-create do cliente em client_profiles
@@ -38,7 +38,7 @@ export async function executeCreateAppointment(professionalId: string, args: any
     .from("client_profiles" as any)
     .select("id")
     .eq("professional_id", professionalId)
-    .ilike("client_name", clientName)
+    .ilike("client_name", `%${clientName}%`)
     .maybeSingle();
 
   let clientProfileId: string | null = null;
@@ -58,7 +58,7 @@ export async function executeCreateAppointment(professionalId: string, args: any
   const { data, error } = await supabase
     .from("appointments" as any)
     .insert({
-      client_id: professionalId,
+      client_id: args.client_id || professionalId,
       client_profile_id: clientProfileId,
       service_id: matchedService.id,
       appointment_date: dateStr,
@@ -72,6 +72,18 @@ export async function executeCreateAppointment(professionalId: string, args: any
   if (error) {
     return { success: false, error: `Erro ao agendar: ${error.message}` };
   }
+
+  // Notificar imediatamente o profissional (e cliente, se for do app)
+  supabase.functions.invoke("notify-booking", {
+    body: {
+      professional_id: professionalId,
+      consumer_id: args.client_id || null,
+      consumer_name: clientName,
+      service_name: matchedService.name,
+      date: dateStr,
+      time: timeStr,
+    }
+  }).catch(e => console.error("Erro ao enviar notificacao de agendamento:", e));
 
   return {
     success: true,
@@ -120,8 +132,8 @@ export async function executeListTodayAppointments(professionalId: string, args:
     return { success: true, action_type: "APPOINTMENTS_LISTED", appointments: [], message: "Nenhum serviço cadastrado." };
   }
 
-  const serviceIds = services.map(s => s.id);
-  const serviceMap = new Map(services.map(s => [s.id, s.name]));
+  const serviceIds = services.map((s: any) => s.id);
+  const serviceMap = new Map(services.map((s: any) => [s.id, s.name]));
 
   const { data: appointments } = await supabase
     .from("appointments" as any)
@@ -148,5 +160,27 @@ export async function executeListTodayAppointments(professionalId: string, args:
       time: a.appointment_time,
       status: a.status,
     })),
+  };
+}
+
+export async function executeSearchAppUser(professionalId: string, args: any) {
+  const query = args.query;
+  if (!query) return { success: false, error: `"query" é obrigatório para a busca.` };
+
+  const { data, error } = await supabase
+    .from("profiles" as any)
+    .select("id, display_name, username, whatsapp")
+    .or(`display_name.ilike.%${query}%,username.ilike.%${query}%,whatsapp.ilike.%${query}%`)
+    .limit(3);
+
+  if (error || !data || data.length === 0) {
+    return { success: false, error: "Usuário não encontrado no app. Você pode prosseguir com o agendamento como cliente externo." };
+  }
+
+  return {
+    success: true,
+    action_type: "APP_USER_FOUND",
+    message: "Encontrado! Use o ID retornado para agendar.",
+    users: data,
   };
 }
