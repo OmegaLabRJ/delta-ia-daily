@@ -12,6 +12,11 @@ import { buildRouterContext } from "./contexts/router.context";
 import { ROUTER_PROMPT } from "./prompts/router.prompt";
 import { callGeminiProxy, resetRateLimit, type GeminiContent } from "@/lib/ai";
 import { classifyLocal } from "@/lib/intent-classifier";
+import { supabase } from "@/lib/supabase";
+import { executeCreatorAnalyticsTool } from "./tools/creator-analytics.tools";
+import { buildCreatorContext } from "./contexts/creator.context";
+import { CREATOR_ANALYTICS_PROMPT, CREATOR_ANALYTICS_TOOLS } from "./prompts/creator-analytics.prompt";
+import { CREATOR_STRATEGY_PROMPT, CREATOR_STRATEGY_TOOLS } from "./prompts/creator-strategy.prompt";
 
 // ─── Agent Registry ──────────────────────────────────────────────────────────
 import { agendaAgent } from "./agents/agenda.agent";
@@ -181,6 +186,18 @@ export class Router {
     const routerCtx = await buildRouterContext(professionalId, this.chatHistory, session);
     this.sessionManager.setOnboarding(routerCtx.session.isOnboarding);
 
+    const profileType = routerCtx.professional.profile_type;
+    if (profileType === 'creator') {
+      const text = await routeCreatorMessage(message, professionalId);
+      // Atualizar histórico
+      this.chatHistory.push({ role: "user", content: message });
+      this.chatHistory.push({ role: "assistant", content: text, agentUsed: 'strategy' });
+      if (this.chatHistory.length > 40) {
+        this.chatHistory = this.chatHistory.slice(-40);
+      }
+      return { text, sessionUpdate: {}, agentUsed: 'strategy' };
+    }
+
     onStatus?.("Analisando intenção...");
     // Classificar intenção
     const classification = await classify(message, this.sessionManager.get(), this.chatHistory);
@@ -231,4 +248,129 @@ export class Router {
   getHistory() {
     return [...this.chatHistory];
   }
+}
+
+// ─── ROTEAMENTO DO CRIADOR ────────────────────────────────────────
+
+async function routeCreatorMessage(
+  message: string, 
+  creatorId: string
+): Promise<string> {
+
+  // ── CAMADA 1: Regex local (zero API) ─────────────────────────
+  const lower = message.toLowerCase();
+
+  if (/quantos seguidores|meus seguidores/.test(lower)) {
+    const { count } = await supabase
+      .from("follows")
+      .select("*", { count: "exact", head: true })
+      .eq("following_id", creatorId);
+    return `Você tem ${count || 0} seguidores no Daily. 🎉`;
+  }
+
+  if (/melhor horário|quando postar|que horas postar/.test(lower)) {
+    const result = await executeCreatorAnalyticsTool(
+      "get_best_posting_time", {}, creatorId
+    );
+    if (!result.success) return result.message;
+    const top = result.best_times[0];
+    return `Seu público é mais ativo na ${top[0]} — ` +
+           `${top[1]} visualizações nesse período. 📊`;
+  }
+
+  if (/meus posts|performance|engajamento/.test(lower)) {
+    const result = await executeCreatorAnalyticsTool(
+      "get_post_performance", { period_days: 30 }, creatorId
+    );
+    if (!result.success) return result.message;
+    const top = result.posts[0];
+    return top
+      ? `Seu post mais forte foi de ${top.category} com ` +
+        `${top.likes_count} likes e ${top.view_count} views. 🔥`
+      : "Ainda não temos dados suficientes. Continue postando!";
+  }
+
+  // ── CAMADA 2 e 3: Gemini com agente especializado ────────────
+  const context = await buildCreatorContext(creatorId);
+
+  // Classificar intenção para escolher agente
+  const intent = await classifyCreatorIntent(message);
+
+  const { prompt, tools } = intent === 'analytics'
+    ? { prompt: CREATOR_ANALYTICS_PROMPT, tools: CREATOR_ANALYTICS_TOOLS }
+    : { prompt: CREATOR_STRATEGY_PROMPT, tools: CREATOR_STRATEGY_TOOLS };
+
+  return callGeminiWithTools({
+    systemPrompt: prompt,
+    userMessage: message,
+    context,
+    tools,
+    onToolCall: (toolName: string, args: any) =>
+      executeCreatorAnalyticsTool(toolName, args, creatorId),
+    onSaveMemory: (type: string, content: string) =>
+      saveCreatorMemory(creatorId, type, content),
+  });
+}
+
+// Classifica se a mensagem é sobre analytics ou estratégia
+async function classifyCreatorIntent(
+  message: string
+): Promise<'analytics' | 'strategy'> {
+  const analyticsWords = [
+    'visualizações', 'views', 'seguidores', 'horário',
+    'performance', 'engajamento', 'crescimento', 'dados'
+  ];
+  
+  const lower = message.toLowerCase();
+  if (analyticsWords.some(w => lower.includes(w))) {
+    return 'analytics';
+  }
+  
+  return 'strategy'; 
+}
+
+// Salva memória na tabela do criador
+async function saveCreatorMemory(
+  creatorId: string,
+  memoryType: string,
+  content: string
+) {
+  // @ts-ignore
+  await supabase.from("creator_memory").insert({
+    creator_id: creatorId,
+    memory_type: memoryType,
+    content,
+  });
+}
+
+async function callGeminiWithTools({ systemPrompt, userMessage, context, tools, onToolCall, onSaveMemory }: any) {
+  const fullPrompt = `${systemPrompt}\n\n${context}`;
+  const response = await callGeminiProxy({
+    system_instruction: { parts: [{ text: fullPrompt }] },
+    contents: [{ role: "user", parts: [{ text: userMessage }] }],
+    tools,
+    generationConfig: { temperature: 0.7 }
+  });
+
+  let fullText = "";
+  let functionCall: any = null;
+  const parts = response?.candidates?.[0]?.content?.parts || [];
+
+  for (const part of parts) {
+    if (part.text) fullText += part.text;
+    if (part.functionCall) functionCall = part.functionCall;
+  }
+
+  if (functionCall) {
+    if (functionCall.name === "save_memory") {
+      await onSaveMemory(functionCall.args.memory_type, functionCall.args.content);
+      return "Memória atualizada!";
+    } else {
+      const toolResult = await onToolCall(functionCall.name, functionCall.args);
+      if (!toolResult.success) return toolResult.message;
+      return "Análise concluída. " + JSON.stringify(toolResult);
+    }
+  }
+
+  return fullText || "Sem resposta.";
 }
