@@ -1,8 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
-// Usando Hugging Face Serverless API (FLUX.1-schnell)
-const HF_MODEL = "black-forest-labs/FLUX.1-schnell";
+// Usando Hugging Face Serverless API (FLUX.1-dev para maior qualidade)
+const HF_MODEL = "black-forest-labs/FLUX.1-dev";
 const HF_URL = `https://router.huggingface.co/hf-inference/models/${HF_MODEL}`;
 
 const corsHeaders = {
@@ -72,12 +72,33 @@ serve(async (req: Request) => {
 
     const userId = user.id;
 
-    // ── 2. RATE LIMITING ─────────────────────────────────────────────────────
+    // ── 2. ENFORCEMENT DE COTA DE IA E RATE LIMITING ────────────────────────
     if (!checkRateLimit(userId)) {
       return new Response(
         JSON.stringify({ error: 'Muitas requisições. Aguarde um momento antes de gerar mais imagens.' }),
         { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
+    }
+
+    const { data: usage } = await supabase.rpc('get_or_create_ai_usage', { p_user_id: userId });
+    
+    const { data: sub } = await supabase
+      .from('user_subscriptions')
+      .select('plan_id, status')
+      .eq('user_id', userId)
+      .maybeSingle();
+      
+    const isActive = sub?.status === 'active' || sub?.status === 'trial';
+    const userPlan = isActive ? (sub?.plan_id || 'free') : 'free';
+    const IMAGE_LIMITS: Record<string, number> = { free: 3, creator: 15, pro: 999999 };
+    const maxImages = IMAGE_LIMITS[userPlan] || 3;
+    const currentImages = usage?.[0]?.images_generated || 0;
+    
+    if (currentImages >= maxImages) {
+      return new Response(
+        JSON.stringify({ error: `Limite de ${maxImages} imagens geradas atingido para o plano ${userPlan}. Faça upgrade para continuar.` }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const { prompt } = await req.json()
@@ -105,7 +126,12 @@ serve(async (req: Request) => {
         'Authorization': `Bearer ${hfApiKey}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ inputs: prompt })
+      body: JSON.stringify({ 
+        inputs: prompt,
+        parameters: {
+          num_inference_steps: 28
+        }
+      })
     })
 
     if (!response.ok) {
@@ -143,6 +169,12 @@ serve(async (req: Request) => {
 
     const { data: urlData } = supabase.storage.from('media').getPublicUrl(fileName);
     console.log(`[generate-image] Success! URL: ${urlData.publicUrl.slice(0, 80)}...`)
+
+    // Atualiza a cota após sucesso de forma atômica
+    const { error: rpcError } = await supabase.rpc('increment_ai_image_usage', { p_user_id: userId });
+    if (rpcError) {
+      console.error('Erro ao incrementar uso de imagem:', rpcError);
+    }
 
     return new Response(
       JSON.stringify({ imageUrl: urlData.publicUrl }),

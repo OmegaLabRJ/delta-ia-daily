@@ -76,12 +76,38 @@ serve(async (req) => {
       )
     }
 
-    // ── 2. RATE LIMITING ─────────────────────────────────────────────────────
+    // ── 2. ENFORCEMENT DE COTA DE IA E RATE LIMITING ────────────────────────
     if (!checkRateLimit(user.id)) {
       return new Response(
         JSON.stringify({ error: 'Muitas requisições. Aguarde um momento antes de tentar novamente.' }),
         { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
+    }
+
+    const { data: usage } = await supabase.rpc('get_or_create_ai_usage', { p_user_id: user.id });
+    const { data: sub } = await supabase
+      .from('user_subscriptions')
+      .select('plan_id, status')
+      .eq('user_id', user.id)
+      .maybeSingle();
+      
+    const isActive = sub?.status === 'active' || sub?.status === 'trial';
+    const userPlan = isActive ? (sub?.plan_id || 'free') : 'free';
+    const CHAT_LIMITS: Record<string, number> = { free: 50, creator: 1500, pro: 999999 };
+    const maxChatRequests = CHAT_LIMITS[userPlan] || 50;
+    const currentChatRequests = usage?.[0]?.requests_count || 0;
+    
+    if (currentChatRequests >= maxChatRequests) {
+      return new Response(
+        JSON.stringify({ error: `Limite de ${maxChatRequests} mensagens da IA atingido para o plano ${userPlan}. Faça upgrade para continuar.` }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Incrementa a cota de forma atômica antes do stream para evitar race condition
+    const { data: newRequestsCount, error: rpcError } = await supabase.rpc('increment_ai_usage', { p_user_id: user.id });
+    if (rpcError) {
+      console.error('Erro ao incrementar uso:', rpcError);
     }
 
     // ── 3. VALIDAÇÃO DO BODY ─────────────────────────────────────────────────
