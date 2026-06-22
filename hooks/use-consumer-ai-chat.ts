@@ -1,7 +1,9 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
+import type { Profile, MarketplaceItem, ClientProfile, ChatMessageModel } from "@/lib/supabase-types";
 import { useSchedule } from "@/hooks/use-schedule";
 import { callGeminiProxy, GeminiContent, resetRateLimit } from "@/lib/ai";
+import { classifyConsumerIntent } from "@/lib/consumer-intent-classifier";
 
 export type ChatMessage = {
   id: string;
@@ -30,9 +32,11 @@ export function useConsumerAIChat(professionalId: string, consumerId?: string) {
   const contextRef  = useRef<string>("");
   const storeTypeRef = useRef<"service_only" | "product_only" | "both">("service_only");
   const historyRef  = useRef<GeminiContent[]>([]);
+  const servicesRef = useRef<MarketplaceItem[]>([]);
+  const productsRef = useRef<MarketplaceItem[]>([]);
   const loadedRef   = useRef(false);
 
-  const { bookSlot } = useSchedule(professionalId);
+  const { getAvailableSlots, bookSlot } = useSchedule(professionalId);
 
   // ── Inicialização do contexto ────────────────────────────────────────────────
   useEffect(() => {
@@ -51,13 +55,16 @@ export function useConsumerAIChat(professionalId: string, consumerId?: string) {
         .single();
 
       const { data: items } = await supabase
-        .from("marketplace_items" as any)
+        .from("marketplace_items")
         .select("id, name, item_type")
         .eq("seller_id", professionalId)
         .eq("is_active", true);
 
-      const proName = (profile as any)?.business_name || (profile as any)?.display_name || "Profissional";
-      const services = (items || []) as any[];
+      const proName = profile?.business_name || profile?.display_name || "Profissional";
+      const services = (items || []) as MarketplaceItem[];
+      servicesRef.current = services.filter(i => i.item_type === "service");
+      productsRef.current = services.filter(i => i.item_type === "product");
+
       const servicesList = services.map(i =>
         `  • ${i.name} (ID: ${i.id})${i.item_type === "product" ? " — Produto" : ""}`
       ).join("\n");
@@ -80,7 +87,7 @@ export function useConsumerAIChat(professionalId: string, consumerId?: string) {
         try {
           const [{ data: clientProfile }, { data: consumerProfile }] = await Promise.all([
             supabase
-              .from("client_profiles" as any)
+              .from("client_profiles")
               .select("visit_count, last_service_name, last_visit_date, preferences, notes")
               .eq("client_id", consumerId)
               .eq("professional_id", professionalId)
@@ -92,10 +99,10 @@ export function useConsumerAIChat(professionalId: string, consumerId?: string) {
               .maybeSingle(),
           ]);
 
-          clientFirstName = (consumerProfile as any)?.display_name?.split(" ")[0] || "";
+          clientFirstName = consumerProfile?.display_name?.split(" ")[0] || "";
 
-          if (clientProfile && (clientProfile as any).visit_count > 0) {
-            const cp = clientProfile as any;
+          if (clientProfile && clientProfile.visit_count > 0) {
+            const cp = clientProfile;
             isRecurring = true;
             lastService = cp.last_service_name || "";
             clientInfo = `
@@ -154,9 +161,9 @@ TOM DE VOZ:
 
 DADOS DA LOJA:
 • Nome: ${proName}
-• Local: ${(profile as any)?.location || "Não informado"}
-• Horários de funcionamento: ${(profile as any)?.business_hours || "Consulte disponibilidade pelo chat"}
-${(profile as any)?.avg_rating > 0 ? `• Avaliação: ⭐ ${(profile as any).avg_rating.toFixed(1)}/5` : ""}
+• Local: ${profile?.location || "Não informado"}
+• Horários de funcionamento: ${profile?.business_hours || "Consulte disponibilidade pelo chat"}
+${(profile?.avg_rating ?? 0) > 0 ? `• Avaliação: ⭐ ${profile?.avg_rating?.toFixed(1)}/5` : ""}
 
 SERVIÇOS E PRODUTOS DISPONÍVEIS:
 ${servicesList || "Nenhum item cadastrado ainda."}
@@ -173,7 +180,7 @@ PASSO 1 — INTENÇÃO DE AGENDAR DETECTADA
 Se o cliente demonstrar intenção de agendar (ex: "tem horário?", "quero marcar", "tem vaga hoje?"), NÃO faça perguntas.
 Chame IMEDIATAMENTE a ferramenta 'get_week_availability'.
 Ela já retorna todos os serviços com preços e horários de hoje e amanhã.
-Se o cliente pedir para uma data além de amanhã, peça gentilmente para ele chamar no WhatsApp: https://wa.me/55${(profile as any)?.whatsapp?.replace(/\D/g, '') || ""}
+Se o cliente pedir para uma data além de amanhã, peça gentilmente para ele chamar no WhatsApp: https://wa.me/55${profile?.whatsapp?.replace(/\D/g, '') || ""}
 
 PASSO 2 — APRESENTAR TUDO DE UMA VEZ
 Com o resultado em mãos, responda em uma mensagem só em formato de texto limpo. Exemplo:
@@ -205,7 +212,7 @@ Repita o resumo e confirme:
 
 PASSO 4 — EXECUTAR O AGENDAMENTO
 Só após confirmação, use 'book_appointment'.
-→ Sucesso: "Agendado! 🎉 Qualquer dúvida fala com a gente pelo WhatsApp: https://wa.me/55${(profile as any)?.whatsapp?.replace(/\D/g, '') || ""}"
+→ Sucesso: "Agendado! 🎉 Qualquer dúvida fala com a gente pelo WhatsApp: https://wa.me/55${profile?.whatsapp?.replace(/\D/g, '') || ""}"
 → Erro: "Esse horário acabou de ser ocupado 😅 Quer um desses: [lista restante]?"
 
 ─────────────────────────────────────────
@@ -239,7 +246,7 @@ Qual te interessou?"
 
 PASSO 3 — CLIENTE ESCOLHEU
 "Ótima escolha! Para combinar a entrega e forma de pagamento, fala com a gente pelo WhatsApp 👇
-https://wa.me/55${(profile as any)?.whatsapp?.replace(/\D/g, '') || ""}"
+https://wa.me/55${profile?.whatsapp?.replace(/\D/g, '') || ""}"
 
 REGRAS INEGOCIÁVEIS DA COMPRA:
 • Nunca invente produtos — use sempre get_products.
@@ -247,10 +254,10 @@ REGRAS INEGOCIÁVEIS DA COMPRA:
 • Nunca processe pagamento — direcione sempre pro WhatsApp.` : ''}`;
 
       // Carregar histórico do banco
-      let chatHistory: any[] = [];
+      let chatHistory: ChatMessageModel[] = [];
       if (consumerId) {
         const { data: history } = await supabase
-          .from("chat_messages" as any)
+          .from("chat_messages")
           .select("role, content, created_at")
           .eq("consumer_id", consumerId)
           .eq("professional_id", professionalId)
@@ -258,17 +265,17 @@ REGRAS INEGOCIÁVEIS DA COMPRA:
           .limit(15);
 
         if (history && history.length > 0) {
-          chatHistory = history;
+          chatHistory = history as ChatMessageModel[];
         }
       }
 
-      historyRef.current = chatHistory.map((m: any) => ({
+      historyRef.current = chatHistory.map((m: ChatMessageModel) => ({
         role: m.role === "user" ? "user" : "model",
         parts: [{ text: m.content }]
       }));
 
       if (chatHistory.length > 0) {
-        const loadedMessages = chatHistory.map((m: any, i: number) => ({
+        const loadedMessages = chatHistory.map((m: ChatMessageModel, i: number) => ({
           id: `hist_${Date.now()}_${i}`,
           role: m.role,
           content: m.content,
@@ -277,7 +284,7 @@ REGRAS INEGOCIÁVEIS DA COMPRA:
         setMessages(loadedMessages);
       } else {
         // Welcome message — personalizada para cliente recorrente
-        const proFirstName = (profile as any)?.display_name?.split(" ")[0] || proName;
+        const proFirstName = profile?.display_name?.split(" ")[0] || proName;
         const welcomeText = isRecurring && clientFirstName
           ? `Oi, ${clientFirstName}! 💕 Que saudade! Da última vez você fez ${lastService} aqui. Quer repetir ou experimentar algo diferente hoje?`
           : `Olá! Bem-vinda à ${proName}! 🩷 Sou a Delta, assistente virtual aqui. Posso te ajudar a agendar um horário, tirar dúvidas sobre nossos serviços ou o que precisar. Como posso te ajudar?`;
@@ -485,7 +492,7 @@ REGRAS INEGOCIÁVEIS DA COMPRA:
       else if (call.name === "get_products") {
         try {
           const { data, error } = await supabase
-            .from("marketplace_items" as any)
+            .from("marketplace_items")
             .select("id, name, price, description, image_url")
             .eq("seller_id", professionalId)
             .eq("item_type", "product")
@@ -507,7 +514,7 @@ REGRAS INEGOCIÁVEIS DA COMPRA:
       else if (call.name === "get_item_details") {
         try {
           const { data, error } = await supabase
-            .from("marketplace_items" as any)
+            .from("marketplace_items")
             .select("name, price, description, item_type, available_days, available_times")
             .eq("id", call.args.item_id)
             .single();
@@ -524,7 +531,7 @@ REGRAS INEGOCIÁVEIS DA COMPRA:
       else if (call.name === "save_client_preference" && consumerId) {
         try {
           const { data: existing } = await supabase
-            .from("client_profiles" as any)
+            .from("client_profiles")
             .select("id, preferences")
             .eq("client_id", consumerId)
             .eq("professional_id", professionalId)
@@ -536,11 +543,11 @@ REGRAS INEGOCIÁVEIS DA COMPRA:
               ? `${current}; ${call.args.preference}`
               : call.args.preference;
             await supabase
-              .from("client_profiles" as any)
+              .from("client_profiles")
               .update({ preferences: updated, updated_at: new Date().toISOString() })
               .eq("id", (existing as any).id);
           } else {
-            await supabase.from("client_profiles" as any).insert({
+            await supabase.from("client_profiles").insert({
               client_id: consumerId,
               professional_id: professionalId,
               client_name: (await supabase.from("profiles").select("display_name").eq("id", consumerId).single()).data?.display_name || "Cliente",
@@ -576,7 +583,14 @@ REGRAS INEGOCIÁVEIS DA COMPRA:
 
       resetRateLimit(); // Evita bloqueio local no envio da resposta da tool
       const nextData = await callGeminiWithTools(currentContents);
-      return await processResponse(nextData, currentContents, depth + 1);
+      
+      // B2B Logic: Em vez de recursão, pegamos o texto gerado após a tool e encerramos.
+      const nextParts = nextData?.candidates?.[0]?.content?.parts || [];
+      const nextTextPart = nextParts.find((p: any) => p.text);
+      
+      const finalResponse = nextTextPart?.text || (functionResult.success ? "Ação realizada com sucesso! ✅" : "Tive um problema para executar essa ação.");
+      currentContents.push({ role: "model", parts: [{ text: finalResponse }] });
+      return finalResponse;
     }
 
     // ── Resposta de texto ──────────────────────────────────────────────────────
@@ -612,7 +626,7 @@ REGRAS INEGOCIÁVEIS DA COMPRA:
       // Salva a mensagem do usuário no banco de dados
       if (consumerId) {
         try {
-          await supabase.from("chat_messages" as any).insert({
+          await supabase.from("chat_messages").insert({
             consumer_id: consumerId,
             professional_id: professionalId,
             role: "user",
@@ -641,6 +655,38 @@ REGRAS INEGOCIÁVEIS DA COMPRA:
         timestamp: Date.now(),
       }]);
 
+      // ── Roteador Local B2C (Custo 0, Latência 0) ──
+      const local = classifyConsumerIntent(text);
+      if (local.confidence >= 0.8) {
+        let staticResponse = "";
+        
+        if (local.intent === "consumer_services") {
+          if (servicesRef.current.length > 0) {
+            staticResponse = "Aqui estão nossos serviços disponíveis:\n" + servicesRef.current.map(s => `• ${s.name}`).join("\n") + "\n\nSe quiser agendar algum, é só me falar a data!";
+          } else {
+            staticResponse = "No momento não temos serviços cadastrados.";
+          }
+        } else if (local.intent === "consumer_products") {
+          if (productsRef.current.length > 0) {
+            staticResponse = "Temos estes produtos disponíveis:\n" + productsRef.current.map(p => `• ${p.name}`).join("\n") + "\n\nQual te interessou?";
+          } else {
+            staticResponse = "Não temos produtos físicos no momento, apenas serviços.";
+          }
+        }
+
+        if (staticResponse) {
+          setIsLoading(false);
+          setMessages(prev => [...prev, {
+            id: `ai_${Date.now()}`,
+            role: "assistant",
+            content: staticResponse,
+            timestamp: Date.now(),
+          }]);
+          // Não precisa chamar o Groq
+          return;
+        }
+      }
+
       const data = await callGeminiWithTools(historyRef.current);
       const finalResponse = await processResponse(data, historyRef.current);
 
@@ -653,7 +699,7 @@ REGRAS INEGOCIÁVEIS DA COMPRA:
       // Salva a resposta do assistente no banco de dados
       if (consumerId && finalResponse) {
         try {
-          await supabase.from("chat_messages" as any).insert({
+          await supabase.from("chat_messages").insert({
             consumer_id: consumerId,
             professional_id: professionalId,
             role: "assistant",
@@ -684,7 +730,7 @@ REGRAS INEGOCIÁVEIS DA COMPRA:
     } finally {
       setIsLoading(false);
     }
-  }, [professionalId, consumerId, bookSlot]);
+  }, [professionalId, consumerId, getAvailableSlots, bookSlot]);
 
   return { messages, isLoading, sendMessage };
 }

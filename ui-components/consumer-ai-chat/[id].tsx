@@ -177,7 +177,7 @@ export default function ConsumerAIChatScreen() {
 
           {messages.length === 1 && !isLoading && (
             <View style={{ marginTop: 8, marginBottom: 10 }}>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={Platform.OS === "web"} contentContainerStyle={{ gap: 8 }}>
                 {QUICK_ACTIONS.map((action) => (
                   <TouchableOpacity
                     key={action.label}
@@ -205,6 +205,8 @@ export default function ConsumerAIChatScreen() {
               onSubmitEditing={handleSend}
               blurOnSubmit={false}
               editable={!isLoading}
+              returnKeyType="send"
+              enterKeyHint="send"
             />
           </View>
 
@@ -213,7 +215,7 @@ export default function ConsumerAIChatScreen() {
             disabled={!input.trim() || isLoading}
             style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: input.trim() && !isLoading ? colors.primary : colors.surface, justifyContent: "center", alignItems: "center", borderWidth: input.trim() ? 0 : 1, borderColor: colors.border }}
           >
-            {isLoading ? <ActivityIndicator size="small" color={colors.muted} /> : <IconSymbol name="arrow.up" size={18} color={input.trim() ? "#fff" : colors.muted} />}
+            {isLoading ? <ActivityIndicator size="small" color={colors.muted} /> : <IconSymbol name="paperplane.fill" size={18} color={input.trim() ? "#fff" : colors.muted} />}
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>

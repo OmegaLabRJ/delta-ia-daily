@@ -13,7 +13,7 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   View, Text, TouchableOpacity, TextInput, ScrollView,
   KeyboardAvoidingView, Platform, ActivityIndicator,
-  Dimensions, Alert,
+  Dimensions, Alert, Modal
 } from "react-native";
 import Animated, { FadeInDown, FadeIn, FadeInRight } from "react-native-reanimated";
 import { Image } from "expo-image";
@@ -44,6 +44,7 @@ const QUICK_ACTIONS = [
 
 // ─── Appointment Action Card ──────────────────────────────────────────────────
 function AppointmentActionCard({ appointment, professionalId, colors }: { appointment: any, professionalId: string, colors: any }) {
+  const router = useRouter();
   const [isHighlighted, setIsHighlighted] = useState(true);
   const [status, setStatus] = useState<'active' | 'cancelled' | 'confirmed'>('active');
   const [hasTrackedAccepted, setHasTrackedAccepted] = useState(false);
@@ -83,9 +84,25 @@ function AppointmentActionCard({ appointment, professionalId, colors }: { appoin
     );
   }
 
-  // Se confirmado, esconde o modal de acordo com a preferência do usuário
+  // Se confirmado, mostra feedback visual e botão para abrir a agenda
   if (status === 'confirmed') {
-    return null;
+    return (
+      <Animated.View entering={FadeInDown} style={{ marginTop: 8, padding: 16, backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: "#22c55e" }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
+          <Text style={{ fontSize: 20 }}>✅</Text>
+          <Text style={{ fontWeight: "800", color: "#16a34a", fontSize: 16 }}>Agendamento Salvo!</Text>
+        </View>
+        <Text style={{ color: colors.muted, fontSize: 13, marginBottom: 16 }}>
+          {appointment.client_name} ({appointment.service}) agendado para {appointment.date?.split("-")?.reverse()?.join("/")} às {appointment.time}.
+        </Text>
+        <TouchableOpacity 
+          onPress={() => router.push('/(tabs)/shop')} 
+          style={{ backgroundColor: colors.primary, paddingVertical: 10, borderRadius: 12, alignItems: "center" }}
+        >
+          <Text style={{ color: "#fff", fontWeight: "700", fontSize: 14 }}>Ir para a Agenda</Text>
+        </TouchableOpacity>
+      </Animated.View>
+    );
   }
 
   if (!isHighlighted) {
@@ -148,12 +165,19 @@ function MessageBubble({ message, colors, index, professionalId }: { message: Ch
 
   // Simple markdown-like rendering (bold with **)
   const renderContent = (text: string) => {
-    const parts = text.split(/(\*\*[^*]+\*\*)/g);
+    const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
     return parts.map((part, i) => {
       if (part.startsWith("**") && part.endsWith("**")) {
         return (
           <Text key={i} style={{ fontWeight: "800" }}>
             {part.slice(2, -2)}
+          </Text>
+        );
+      }
+      if (part.startsWith("*") && part.endsWith("*")) {
+        return (
+          <Text key={i} style={{ fontStyle: "italic", color: colors.muted }}>
+            {part.slice(1, -1)}
           </Text>
         );
       }
@@ -192,26 +216,29 @@ function MessageBubble({ message, colors, index, professionalId }: { message: Ch
 
       <View
         style={{
-          backgroundColor: isUser ? colors.primary : colors.surface,
-          borderRadius: 18,
-          borderTopRightRadius: isUser ? 4 : 18,
-          borderTopLeftRadius: isUser ? 18 : 4,
-          paddingHorizontal: 14,
-          paddingVertical: 10,
+          backgroundColor: isUser ? colors.primary : (colors.primary + "12"), // Subtle primary tint for AI
+          borderRadius: 20,
+          borderTopRightRadius: isUser ? 4 : 20,
+          borderTopLeftRadius: isUser ? 20 : 4,
+          paddingHorizontal: 16,
+          paddingVertical: 12,
           borderWidth: isUser ? 0 : 1,
-          borderColor: colors.border,
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 1 },
-          shadowOpacity: 0.05,
-          shadowRadius: 3,
-          elevation: 1,
+          borderColor: isUser ? "transparent" : (colors.primary + "25"),
+          shadowColor: isUser ? colors.primary : "#000",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: isUser ? 0.25 : 0.04,
+          shadowRadius: 4,
+          elevation: 2,
         }}
       >
         <Text
           style={{
             color: isUser ? "#fff" : colors.foreground,
-            fontSize: 14,
-            lineHeight: 21,
+            fontSize: 15,
+            lineHeight: 23,
+            letterSpacing: 0.2,
+            fontWeight: isUser ? "500" : "400",
+            opacity: isUser ? 1 : 0.9, // Slightly softer text for AI
           }}
         >
           {renderContent(message.content)}
@@ -289,7 +316,7 @@ function MessageBubble({ message, colors, index, professionalId }: { message: Ch
                     </View>
                   ))}
                   
-                  <TouchableOpacity onPress={() => router.push('/(tabs)/calendar' as any)} style={{ backgroundColor: colors.primary, paddingVertical: 8, borderRadius: 12, alignItems: "center", marginTop: 10 }}>
+                  <TouchableOpacity onPress={() => router.push('/(tabs)/shop' as any)} style={{ backgroundColor: colors.primary, paddingVertical: 8, borderRadius: 12, alignItems: "center", marginTop: 10 }}>
                     <Text style={{ color: "#fff", fontWeight: "700", fontSize: 13 }}>Ver Calendário</Text>
                   </TouchableOpacity>
                 </View>
@@ -375,6 +402,8 @@ export default function AIChatScreen() {
   const [input, setInput] = useState("");
   const scrollRef = useRef<ScrollView>(null);
   const initialPromptSent = useRef(false);
+  const [showPricingModal, setShowPricingModal] = useState(false);
+  const [pricingInput, setPricingInput] = useState("");
 
   // Auto-send initialPrompt (from notifications / lead alerts)
   useEffect(() => {
@@ -398,6 +427,19 @@ export default function AIChatScreen() {
     setInput("");
   }, [input, isLoading, sendMessage]);
 
+  const handlePricingSubmit = useCallback(async () => {
+    setShowPricingModal(false);
+    if (!pricingInput.trim()) return;
+    const service_name = pricingInput.trim();
+    setPricingInput("");
+    
+    const { executeSuggestPrice } = await import('@/lib/ai/tools/pricing.tools');
+    const result = await executeSuggestPrice({ service_name, region_type: "popular" });
+    if (result.success) {
+       addLocalMessage(`Aqui está uma estimativa para **${service_name}**:\n\n💰 **Preço sugerido:** R$ ${result.suggested_price}\n📊 **Faixa:** ${result.range}\n\n${result.justification}`, result);
+    }
+  }, [pricingInput, addLocalMessage]);
+
   const handleQuickAction = useCallback(
     (action: typeof QUICK_ACTIONS[0]) => {
       if (isLoading) return;
@@ -405,33 +447,12 @@ export default function AIChatScreen() {
 
       // FASE 2A: Quick Actions 100% Nativas
       if (action.label === "Sugerir preço") {
-        const handlePricing = async (service_name?: string | null) => {
-          if (!service_name) return;
-          const { executeSuggestPrice } = await import('@/lib/ai/tools/pricing.tools');
-          const result = await executeSuggestPrice({ service_name, region_type: "popular" }); // Default region for now
-          if (result.success) {
-             addLocalMessage(`Aqui está uma estimativa para **${service_name}**:\n\n💰 **Preço sugerido:** R$ ${result.suggested_price}\n📊 **Faixa:** ${result.range}\n\n${result.justification}`, result);
-          }
-        };
-
-        if (Platform.OS === "web") {
-          const svc = window.prompt("Calculadora de Preço\n\nQual serviço você quer precificar? (ex: Manicure, Corte)");
-          handlePricing(svc);
-        } else {
-          Alert.prompt(
-            "Calculadora de Preço",
-            "Qual serviço você quer precificar? (ex: Manicure, Corte)",
-            [
-              { text: "Cancelar", style: "cancel" },
-              { text: "Calcular", onPress: handlePricing }
-            ]
-          );
-        }
+        setShowPricingModal(true);
         return;
       }
 
       if (action.label === "Dica de agenda") {
-        router.push("/(tabs)/calendar" as any);
+        router.push("/(tabs)/shop" as any);
         return;
       }
 
@@ -493,7 +514,7 @@ export default function AIChatScreen() {
               <Image source={AI_AVATAR} style={{ width: 36, height: 36 }} contentFit="cover" />
             </View>
             <View>
-              <Text style={{ fontWeight: "800", fontSize: 16, color: colors.foreground }}>
+              <Text style={{ fontFamily: "PlayfairDisplay_700Bold", fontWeight: "800", fontSize: 16, color: colors.foreground }}>
                 Consultora Daily
               </Text>
               <Text style={{ fontSize: 11, color: colors.primary, fontWeight: "600" }}>
@@ -532,7 +553,7 @@ export default function AIChatScreen() {
               >
                 <Image source={require('@/assets/images/ai-avatar.jpg')} style={{ width: 72, height: 72 }} contentFit="cover" />
               </View>
-              <Text style={{ fontWeight: "800", fontSize: 18, color: colors.foreground, textAlign: "center" }}>
+              <Text style={{ fontFamily: "PlayfairDisplay_700Bold", fontWeight: "800", fontSize: 18, color: colors.foreground, textAlign: "center" }}>
                 Olá! Sou a Consultora Daily 👋
               </Text>
               <Text
@@ -700,6 +721,34 @@ export default function AIChatScreen() {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+
+      {/* Modal de Preço */}
+      <Modal visible={showPricingModal} transparent animationType="fade" onRequestClose={() => setShowPricingModal(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", alignItems: "center", padding: 20 }}>
+          <View style={{ backgroundColor: colors.background, padding: 20, borderRadius: 16, width: "100%", maxWidth: 400, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 5 }}>
+            <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground, marginBottom: 8 }}>Calculadora de Preço</Text>
+            <Text style={{ color: colors.muted, marginBottom: 16, fontSize: 14 }}>Qual serviço você quer precificar? (ex: Manicure, Corte)</Text>
+            <TextInput
+              value={pricingInput}
+              onChangeText={setPricingInput}
+              placeholder="Ex: Alongamento de unhas"
+              placeholderTextColor={colors.muted}
+              style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 12, color: colors.foreground, marginBottom: 16, fontSize: 16 }}
+              autoFocus
+              returnKeyType="done"
+              onSubmitEditing={handlePricingSubmit}
+            />
+            <View style={{ flexDirection: "row", gap: 12, justifyContent: "flex-end" }}>
+              <TouchableOpacity onPress={() => setShowPricingModal(false)} style={{ padding: 10 }}>
+                <Text style={{ color: colors.muted, fontWeight: "600", fontSize: 14 }}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handlePricingSubmit} style={{ backgroundColor: colors.primary, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8 }}>
+                <Text style={{ color: "#fff", fontWeight: "700", fontSize: 14 }}>Calcular</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </ScreenContainer>
   );
 }
