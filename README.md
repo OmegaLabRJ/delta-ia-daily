@@ -164,6 +164,7 @@ delta-ia-daily/
 │   ├── init_ai_schema.sql               # Base schema: 3-layer memory, audit, RLS
 │   ├── 20260517050000_ai_context_fields.sql  # Context memory fields
 │   ├── 20260613_add_client_profile_link.sql  # Client-profile linking
+│   ├── 20260622_ai_atomic_rpc.sql       # Postgres RPCs for atomic AI usage increments (prevents race conditions)
 │   ├── ai_logs_setup.sql                # AI observability & usage logs
 │   ├── rpc_get_week_availability.sql    # Postgres function: weekly availability
 │   ├── fix_missing_columns.sql          # Schema patches
@@ -171,10 +172,11 @@ delta-ia-daily/
 │   └── cleanup_demo.sql                 # Demo data cleanup
 │
 ├── supabase/functions/                  # Supabase Edge Functions (active)
-│   ├── gemini-chat/                     # Secure server-side LLM gateway
+│   ├── gemini-chat/                     # Secure server-side LLM gateway (Gemini)
+│   ├── groq-chat/                       # High-speed LLM gateway (Groq LPU)
 │   ├── daily-briefing/                  # Autonomous business analytics aggregator
 │   ├── generate-image/                  # AI image generation
-│   ├── gerar-texto-daily/               # AI text generation (PT-BR)
+│   ├── gerar-texto-daily/               # (Deprecated) AI text generation (PT-BR)
 │   ├── inactivity-alert/                # Proactive engagement notifications
 │   └── notify-booking/                  # Real-time transactional webhooks
 │
@@ -222,10 +224,11 @@ The Agenda Agent uses `rpc_get_week_availability` — a Postgres function that c
 ### Edge Functions
 | Function | Purpose | Trigger |
 |----------|---------|---------|
-| `gemini-chat` | Secure LLM gateway (API key never reaches client) | User message |
+| `gemini-chat` | Secure LLM gateway (Gemini) with atomic usage tracking | User message |
+| `groq-chat` | High-speed LLM gateway (Groq LPU) | User message |
 | `daily-briefing` | Aggregates daily business metrics autonomously | Cron / manual |
 | `generate-image` | AI-powered image generation for marketing | Agent request |
-| `gerar-texto-daily` | PT-BR text generation for social content | Agent request |
+| `gerar-texto-daily` | (Deprecated) PT-BR text generation | Agent request |
 | `inactivity-alert` | Proactive push when user hasn't engaged | Cron |
 | `notify-booking` | Real-time booking confirmations | Database webhook |
 
