@@ -210,6 +210,7 @@ delta-ia-daily/
 │   │
 │   ├── ai.ts                                # Gemini LLM init & multi-agent config
 │   ├── intent-classifier.ts                 # B2B local intent parser (regex + negation scoring)
+│   ├── logger.ts                             # Structured JSON logger (observability core)
 │   └── supabase.ts                          # Supabase client config
 │
 ├── hooks/                                   # React Native frontend hooks
@@ -313,6 +314,31 @@ The Agenda Agent uses `rpc_get_week_availability` — a Postgres function that c
 ### Atomic RPCs (Race Condition Prevention)
 
 `increment_ai_usage()` and `increment_ai_image_usage()` use `ON CONFLICT ... DO UPDATE` with `SECURITY DEFINER` to prevent double-counting under concurrent load.
+
+### 📊 Observability Engine (`logger.ts`)
+
+Enterprise-grade structured logging built into every layer:
+
+| Capability | Implementation | Example Output |
+|------------|---------------|----------------|
+| **Request ID** | `req_<timestamp>_<random>_<counter>` | `req_m4k7x_a3f2_42` |
+| **Structured JSON** | All logs emit JSON, never free text | `{"level":"info","category":"ai.request",...}` |
+| **Stack Traces** | Full `Error.stack` + user/agent/action context | Pinpoints exact failure in tool chain |
+| **Cache Hit/Miss** | Tracks availability cache with TTL awareness | `cache_hit_rate: "66.7%"` |
+| **Query Timing** | RPC latency measured per operation | `get_week_availability: 45ms` |
+| **Fallback Tracking** | Groq → Gemini transitions logged with reason | `fallback_to_gemini: 3, reason: "503"` |
+| **Token Usage/Agent** | Per-agent token consumption tracking | `{agenda: 1200, marketing: 3400}` |
+| **Booking Metrics** | Attempt/success/failure with success rate | `booking_success_rate: "94.2%"` |
+| **Rate Limit Monitor** | Tracks users hitting plan limits | `rate_limit_hits: 12, plan: "free"` |
+| **Performance** | Latency per provider with running averages | `avg_groq: 180ms, avg_gemini: 1200ms` |
+
+```typescript
+// Every AI call generates structured, traceable logs:
+logger.aiRequest(requestId, { provider: "groq-chat", agent: "agenda" });
+logger.aiResponse(requestId, { provider: "groq-chat", latencyMs: 145 });
+logger.cacheHit(requestId, "availability", 120000);
+logger.bookingResult(requestId, true, { serviceId, date, time, autoApproved: true });
+```
 
 ---
 
