@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 import Constants from "expo-constants";
+import type { Database } from "./database.types";
 
 // ✅ Keys lidas do app.config.ts (extra) — permite rotacionar sem rebuild
 const FALLBACK_URL = "https://your-project-url.supabase.co";
@@ -11,7 +12,7 @@ const FALLBACK_KEY = "your-anon-key";
 export const SUPABASE_URL = Constants.expoConfig?.extra?.supabaseUrl || FALLBACK_URL;
 export const SUPABASE_ANON_KEY = Constants.expoConfig?.extra?.supabaseAnonKey || FALLBACK_KEY;
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     storage: AsyncStorage as any,
     autoRefreshToken: true,
