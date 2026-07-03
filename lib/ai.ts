@@ -1,4 +1,5 @@
 import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from "./supabase";
+import { logger, generateRequestId } from "./logger";
 
 export type GeminiRole = "user" | "model" | "function";
 export type GeminiPart = { text?: string; functionCall?: any; functionResponse?: any };
@@ -38,21 +39,36 @@ export async function callGeminiProxy(params: GeminiProxyParams, onChunk?: (text
   }
   lastCallTime = now;
 
+  // Request ID único para rastreabilidade end-to-end
+  const requestId = generateRequestId();
+  const requestStartTime = Date.now();
+
   const TIMEOUT_MS = 45000;
-  const CLIENT_RETRIES = 1; // 1 retry no client por provedor
+  const CLIENT_RETRIES = 1;
 
   // Tenta Groq primeiro, se der erro (503, 429, timeout), cai pro Gemini
   const providers = ["groq-chat", "gemini-chat"];
+  let lastFailedProvider = "";
 
   for (const provider of providers) {
+    // Log de fallback se mudou de provider
+    if (lastFailedProvider && lastFailedProvider !== provider) {
+      logger.aiFallback(requestId, {
+        fromProvider: lastFailedProvider,
+        toProvider: provider,
+        reason: "previous_provider_failed",
+      });
+    }
+
     for (let attempt = 0; attempt <= CLIENT_RETRIES; attempt++) {
       if (attempt > 0) {
         const delay = attempt * 3000 + Math.random() * 1000;
-        console.log(`[AI] Client retry ${attempt}/${CLIENT_RETRIES} no ${provider} após ${Math.round(delay)}ms`);
+        logger.latency(requestId, `retry_delay_${provider}`, Math.round(delay));
         await new Promise(r => setTimeout(r, delay));
         lastCallTime = 0;
       }
 
+      const providerStartTime = Date.now();
       let timeoutId: any;
       const timeoutPromise = new Promise((_, reject) => {
         timeoutId = setTimeout(() => reject(new Error("TIMEOUT")), TIMEOUT_MS);
@@ -61,11 +77,11 @@ export async function callGeminiProxy(params: GeminiProxyParams, onChunk?: (text
       try {
         let response: any;
 
+        logger.aiRequest(requestId, { provider });
+
         if (onChunk) {
           const { data: { session } } = await supabase.auth.getSession();
           const token = session?.access_token || SUPABASE_ANON_KEY;
-
-          console.log(`[AI] Chamando Edge Function: ${provider}...`);
 
           const fetchRes = await fetch(`${SUPABASE_URL}/functions/v1/${provider}`, {
             method: "POST",
@@ -85,14 +101,17 @@ export async function callGeminiProxy(params: GeminiProxyParams, onChunk?: (text
              let functionCall: any = null;
              
              if (reader) {
+               let buffer = "";
                while (true) {
                  const { done, value } = await reader.read();
                  if (done) break;
                  
-                 const chunk = decoder.decode(value, { stream: true });
-                 const lines = chunk.split("\n");
+                 buffer += decoder.decode(value, { stream: true });
+                 const lines = buffer.split("\n");
+                 buffer = lines.pop() || "";
+
                  for (const line of lines) {
-                   if (line.startsWith("data: ")) {
+                   if (line.trim().startsWith("data: ")) {
                      const dataStr = line.slice(6);
                      if (dataStr.trim() === "[DONE]") continue;
                      try {
@@ -119,7 +138,13 @@ export async function callGeminiProxy(params: GeminiProxyParams, onChunk?: (text
              if (fullText) parts.push({ text: fullText });
              if (functionCall) parts.push({ functionCall });
              
-             return { candidates: [{ content: { parts } }] };
+              const latencyMs = Date.now() - providerStartTime;
+              logger.aiResponse(requestId, {
+                provider,
+                latencyMs,
+                hasFunctionCall: !!functionCall,
+              });
+              return { candidates: [{ content: { parts } }] };
           }
         } else {
           response = await Promise.race([
@@ -134,36 +159,42 @@ export async function callGeminiProxy(params: GeminiProxyParams, onChunk?: (text
             ? response.error.message
             : JSON.stringify(response.error);
 
-          console.error(`[AI] Edge Function ${provider} error (status ${status}):`, errorBody);
+          logger.aiError(requestId, new Error(errorBody), {
+            provider,
+            context: { status, attempt, errorBody },
+          });
 
-          // Erro de autenticação não faz sentido tentar em outro provedor (é erro do user)
           if (status === 401) {
             throw new Error("AUTH_EXPIRED");
           }
 
-          // Se for 429 ou 503, podemos tentar retry no mesmo provedor
           if ((status === 429 || status === 503) && attempt < CLIENT_RETRIES) {
-            console.warn(`[AI] ${provider} sobrecarregado, tentando novamente...`);
             continue;
           }
 
-          // Se falhou todos os retries ou foi outro erro (500), dá 'break' pra ir pro próximo provedor
+          lastFailedProvider = provider;
           break;
         }
 
         // Sucesso!
+        const latencyMs = Date.now() - providerStartTime;
+        logger.aiResponse(requestId, { provider, latencyMs });
         return response.data;
       } catch (e: any) {
         if (["AUTH_EXPIRED"].includes(e.message)) {
-          throw e; // não tenta fallback
+          throw e;
         }
 
+        logger.aiError(requestId, e, {
+          provider,
+          context: { attempt, error_type: e.message === "TIMEOUT" ? "timeout" : "network" },
+        });
+
         if (attempt < CLIENT_RETRIES && e.message !== "TIMEOUT") {
-          console.warn(`[AI] Erro de rede no ${provider}, tentando novamente...`);
           continue;
         }
 
-        // Falhou, vai pro próximo provider
+        lastFailedProvider = provider;
         break; 
       } finally {
         if (timeoutId) clearTimeout(timeoutId);

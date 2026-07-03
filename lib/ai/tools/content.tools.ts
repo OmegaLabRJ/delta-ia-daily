@@ -1,8 +1,19 @@
 import { supabase } from "@/lib/supabase";
 
 export async function executeCreatePostDraft(professionalId: string, args: any) {
-  const { generateImage } = await import("@/lib/image-generation");
-  const imageRes = await generateImage(args.image_prompt, args.category);
+  const { generateImage, enhanceWithArtDirectorRules } = await import("@/lib/image-generation");
+
+  // Enriquece o prompt do Marketing com regras anatômicas + cultura BR (determinístico, 0 tokens)
+  const enhancedPrompt = enhanceWithArtDirectorRules(args.image_prompt, args.category);
+  const imageRes = await generateImage(enhancedPrompt, args.category);
+
+  if (!imageRes) {
+    return {
+      success: false,
+      error: "A geração de imagem está demorando mais que o normal. Tente novamente em instantes! 🎨",
+      draft: { caption: args.caption, category: args.category, image_url: null },
+    };
+  }
 
   return {
     success: true,

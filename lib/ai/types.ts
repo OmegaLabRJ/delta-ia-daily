@@ -12,7 +12,8 @@ export type AgentType =
   | "onboarding"
   | "strategy"
   | "crm"
-  | "finance";
+  | "finance"
+  | "art-director";
 
 // ─── Session Context ─────────────────────────────────────────────────────────
 

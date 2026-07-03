@@ -56,7 +56,7 @@ export async function executeCreateAppointment(professionalId: string, args: any
   const dateStr = parseDefensiveDate(args.date);
   const timeStr = parseDefensiveTime(args.time);
 
-  const matchedService = myServices.find((s: any) => s.name.toLowerCase().includes(serviceName.toLowerCase())) || myServices[0];
+  const matchedService = (myServices as any[])?.find((s: any) => s.name.toLowerCase().includes(serviceName.toLowerCase())) || (myServices as any[])[0];
 
   // Validação de conflito
   const serviceIds = myServices.map((s: any) => s.id);
@@ -109,6 +109,13 @@ export async function executeCreateAppointment(professionalId: string, args: any
     .single();
 
   if (error) {
+    // 23505 = violação de unique constraint (idx_appointments_no_double_booking)
+    if ((error as any).code === '23505') {
+      return {
+        success: false,
+        error: 'Esse horário acabou de ser reservado por outro cliente. Por favor, escolha outro horário disponível.',
+      };
+    }
     return { success: false, error: `Erro ao agendar: ${error.message}` };
   }
 
@@ -129,7 +136,7 @@ export async function executeCreateAppointment(professionalId: string, args: any
     action_type: "APPOINTMENT_CREATED",
     message: "Agendamento criado com sucesso.",
     appointment: {
-      id: data.id,
+      id: (data as any).id,
       client_name: clientName,
       service: matchedService.name,
       date: dateStr,

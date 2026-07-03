@@ -34,9 +34,31 @@ const INTENTS: IntentDefinition[] = [
     patterns: [/quanto\s+(cobr|cust)/i, /qual\s+[eo]\s+pre[cç]o/i, /valor\s+d[oa]/i, /tabela\s+de\s+pre[cç]/i, /sugerir?\s+pre[cç]o/i, /precificar/i, /como\s+cobrar/i],
     negations: [/faturamento/i, /receita/i, /ganhei/i]
   },
+  // ─── Art Director: pedidos de geração de imagem ────────────────────────────
+  {
+    intent: "image_request",
+    patterns: [
+      /\b(cria|gera|faz|quero|preciso\s+de)\s+(uma?\s+)?(imagem|foto|visual)\b/i,
+      /\bgera\s+(uma?\s+)?(foto|imagem)\b/i,
+      /\bcria\s+(um?\s+)?visual\b/i,
+      /\bgera\s+(um?\s+)?conte[uú]do\s+visual\b/i,
+      /\b(foto|imagem)\s+(de|do|da|dos|das)\s+\w+/i,
+    ],
+    negations: [
+      /perfil/i,
+      /cliente/i,
+      /antes\s+e?\s*depois/i,
+      /agenda/i,
+      /hor[aá]rio/i,
+      /post/i,
+      /postagem/i,
+      /legenda/i,
+      /calend[aá]rio/i,
+    ]
+  },
   {
     intent: "content_request",
-    patterns: [/cria\s+(um\s+)?post/i, /legenda/i, /calend[aá]rio\s+de\s+(conte[uú]do|post)/i, /dica\s+de\s+post/i, /o\s+que\s+postar/i, /conte[uú]do\s+pra/i, /ideia\s+de\s+post/i, /criar?\s+conte[uú]do/i, /publica[cç][aã]o/i],
+    patterns: [/cria\s+(um\s+)?post/i, /legenda/i, /calend[aá]rio\s+de\s+(conte[uú]do|post)/i, /dica\s+de\s+post/i, /o\s+que\s+postar/i, /conte[uú]do\s+pra/i, /ideia\s+de\s+post/i, /criar?\s+conte[uú]do/i, /publica[cç][aã]o/i, /cria\s+(uma?\s+)?postagem/i, /post\s+(sobre|pra|para|de)/i, /como\s+posso\s+vender\s+mais/i, /o\s+que\s+postar\s+hoje/i, /criar?\s+(uma?\s+)?promoção/i, /dica\s+pra\s+(vender|atrair|crescer)/i],
     negations: [/cancelar/i, /agenda/i]
   },
   {

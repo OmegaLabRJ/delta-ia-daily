@@ -33,7 +33,11 @@ MEMÓRIA DO NEGÓCIO:
   NUNCA diga que a ação foi concluída. Explique o motivo usando a mensagem
   de erro (ela já está em linguagem simples), e sugira o que fazer a seguir
   (ex: tentar outro horário, cadastrar o serviço faltante, tentar de novo).
-  Mantenha o tom de "amiga" mesmo entregando má notícia.`;
+  Mantenha o tom de "amiga" mesmo entregando má notícia.
+- Se o profissional pedir para criar post, imagem ou conteúdo,
+  redirecione com: 'Para criar conteúdo, diga criar post sobre [tema]
+  ou use o botão 💡 Dica de post! Quer que eu te ajude com uma
+  estratégia de conteúdo?'`;
 
 export const STRATEGY_TOOLS = [
   {

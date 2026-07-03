@@ -27,6 +27,7 @@ import { onboardingAgent } from "./agents/onboarding.agent";
 import { strategyAgent } from "./agents/strategy.agent";
 import { crmAgent } from "./agents/crm.agent";
 import { financeAgent } from "./agents/finance.agent";
+import { artDirectorAgent } from "./agents/art-director.agent";
 
 const AGENT_REGISTRY: Record<AgentType, BaseAgent> = {
   agenda: agendaAgent,
@@ -37,6 +38,7 @@ const AGENT_REGISTRY: Record<AgentType, BaseAgent> = {
   strategy: strategyAgent,
   crm: crmAgent,
   finance: financeAgent,
+  "art-director": artDirectorAgent,
 };
 
 // ─── Intent → AgentType mapping ──────────────────────────────────────────────
@@ -50,6 +52,7 @@ const INTENT_TO_AGENT: Record<string, AgentType> = {
   onboarding: "onboarding",
   open_question: "strategy",
   greeting: "strategy",
+  image_request: "art-director",
 };
 
 // ─── Extra patterns for new agent types ──────────────────────────────────────
@@ -145,7 +148,7 @@ Responda SOMENTE com o nome do agente:`;
     });
 
     const response = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim().toLowerCase() || "";
-    const validAgents: AgentType[] = ["agenda", "marketing", "analytics", "pricing", "onboarding", "strategy", "crm", "finance"];
+    const validAgents: AgentType[] = ["agenda", "marketing", "analytics", "pricing", "onboarding", "strategy", "crm", "finance", "art-director"];
     const detected = validAgents.find(a => response.includes(a));
 
     if (detected) {
